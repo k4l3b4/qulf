@@ -28,7 +28,7 @@ from qulf.adapters.sqlalchemy import (
 class DefaultUser(QulfBase, UserMixin):
     """Default User table schema ('user') used if no custom model is supplied."""
 
-    __tablename__ = "users"
+    __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
 
@@ -38,7 +38,7 @@ class DefaultSession(QulfBase, SessionMixin):
 
     __tablename__ = "sessions"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
 
 
 class DefaultAccount(QulfBase, AccountMixin):
@@ -48,60 +48,60 @@ class DefaultAccount(QulfBase, AccountMixin):
 
     __tablename__ = "accounts"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
 
 
 # Mapping table users <-> roles
-user_roles = Table(
-    "user_roles",
+user_role = Table(
+    "user_role",
     QulfBase.metadata,
     Column(
-        "user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+        "user_id", Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True
     ),
     Column(
-        "role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True
+        "role_id", Integer, ForeignKey("role.id", ondelete="CASCADE"), primary_key=True
     ),
 )
 
 # Mapping table roles <-> permissions
-role_permissions = Table(
-    "role_permissions",
+role_permission = Table(
+    "role_permission",
     QulfBase.metadata,
     Column(
-        "role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True
+        "role_id", Integer, ForeignKey("role.id", ondelete="CASCADE"), primary_key=True
     ),
     Column(
         "permission_id",
         Integer,
-        ForeignKey("permissions.id", ondelete="CASCADE"),
+        ForeignKey("permission.id", ondelete="CASCADE"),
         primary_key=True,
     ),
 )
 
 
 class DefaultRole(QulfBase, RoleMixin):
-    __tablename__ = "roles"
+    __tablename__ = "role"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
 
 class DefaultPermission(QulfBase, PermissionMixin):
-    __tablename__ = "permissions"
+    __tablename__ = "permission"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
 
 class DefaultPasskey(QulfBase):
     """
-    Default Passkey credential table (``passkeys``).
+    Default Passkey credential table (``passkey``).
 
     Each row represents one WebAuthn credential for a user. A user may have
     multiple rows — one per authenticator device (Touch ID, Face ID, etc.).
     """
 
-    __tablename__ = "passkeys"
+    __tablename__ = "passkey"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
+        ForeignKey("user.id", ondelete="CASCADE"), index=True
     )
     credential_id: Mapped[str] = mapped_column(String, unique=True, index=True)
     public_key: Mapped[str] = mapped_column(String)
