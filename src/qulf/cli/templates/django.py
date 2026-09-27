@@ -20,7 +20,7 @@ class User(UserMixin):
     id: Any = models.BigAutoField(primary_key=True)
 
     class Meta:
-        db_table = "users"
+        db_table = "user"
 
 
 class Session(SessionMixin):
@@ -30,7 +30,7 @@ class Session(SessionMixin):
     )
 
     class Meta:
-        db_table = "sessions"
+        db_table = "session"
 
 
 class Account(AccountMixin):
@@ -40,21 +40,21 @@ class Account(AccountMixin):
     )
 
     class Meta:
-        db_table = "accounts"
+        db_table = "account"
 
 
 class Role(RoleMixin):
     id: Any = models.BigAutoField(primary_key=True)
 
     class Meta:
-        db_table = "roles"
+        db_table = "role"
 
 
 class Permission(PermissionMixin):
     id: Any = models.BigAutoField(primary_key=True)
 
     class Meta:
-        db_table = "permissions"
+        db_table = "permission"
 
 
 class UserRole(models.Model):
@@ -67,7 +67,7 @@ class UserRole(models.Model):
     )
 
     class Meta:
-        db_table = "user_roles"
+        db_table = "user_role"
 
 
 class RolePermission(models.Model):
@@ -80,7 +80,7 @@ class RolePermission(models.Model):
     )
 
     class Meta:
-        db_table = "role_permissions"
+        db_table = "role_permission"
 
 
 class PasskeyMixin(models.Model):
@@ -103,7 +103,7 @@ class PasskeyMixin(models.Model):
 
 
 class Passkey(PasskeyMixin):
-    """Default Passkey credential table (``passkeys``)."""
+    """Default Passkey credential table (``passkey``)."""
 
     id: Any = models.BigAutoField(primary_key=True)
     user: Any = models.ForeignKey(
@@ -111,4 +111,4 @@ class Passkey(PasskeyMixin):
     )
 
     class Meta:
-        db_table = "passkeys"
+        db_table = "passkey"

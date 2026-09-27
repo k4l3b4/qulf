@@ -11,33 +11,6 @@ from qulf.core import Qulf
 from qulf.exceptions import QulfException
 from qulf.types import AccountCreate, UserCreate
 
-# @pytest.fixture(scope="session", autouse=True)
-# def setup_django_tables(django_db_setup: Any, django_db_blocker: Any) -> None:
-#     """Foolproof way to build tables for standalone library models."""
-#     with django_db_blocker.unblock():
-#         from django.db import connection
-
-#         from qulf.adapters.django import (
-#             DefaultAccount,
-#             DefaultPasskey,
-#             DefaultPermission,
-#             DefaultRole,
-#             DefaultRolePermission,
-#             DefaultSession,
-#             DefaultUser,
-#             DefaultUserRole,
-#         )
-
-#         with connection.schema_editor() as schema_editor:
-#             schema_editor.create_model(DefaultUser)
-#             schema_editor.create_model(DefaultSession)
-#             schema_editor.create_model(DefaultAccount)
-#             schema_editor.create_model(DefaultRole)
-#             schema_editor.create_model(DefaultPermission)
-#             schema_editor.create_model(DefaultUserRole)
-#             schema_editor.create_model(DefaultRolePermission)
-#             schema_editor.create_model(DefaultPasskey)
-
 
 @pytest.fixture(autouse=True)
 async def clear_django_db() -> None:
@@ -531,7 +504,7 @@ class TestDjangoPasskeys:
 
         user_id = django_seeded_user.id
 
-        # 1. Create passkey
+        # Create passkey
         data = PasskeyCredentialCreate(
             user_id=user_id,
             credential_id="cred_django_123",
@@ -543,24 +516,24 @@ class TestDjangoPasskeys:
         assert passkey.credential_id == "cred_django_123"
         assert passkey.name == "MacBook"
 
-        # 2. Get by user
+        # Get by user
         passkeys = await django_adapter.get_passkeys_by_user(user_id)
         assert len(passkeys) == 1
         assert passkeys[0].credential_id == "cred_django_123"
 
-        # 3. Get by credential ID (found & not found)
+        # Get by credential ID (found & not found)
         found = await django_adapter.get_passkey_by_credential_id("cred_django_123")
         assert found is not None and found.credential_id == "cred_django_123"
 
         missing = await django_adapter.get_passkey_by_credential_id("nonexistent")
         assert missing is None
 
-        # 4. Update sign count
+        # Update sign count
         await django_adapter.update_passkey_sign_count("cred_django_123", 5)
         updated = await django_adapter.get_passkey_by_credential_id("cred_django_123")
         assert updated is not None and updated.sign_count == 5
 
-        # 5. Delete passkey (true for existing, false for non-existing)
+        # Delete passkey (true for existing, false for non-existing)
         deleted = await django_adapter.delete_passkey("cred_django_123")
         assert deleted is True
 

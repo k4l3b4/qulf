@@ -128,7 +128,7 @@ class DefaultUser(UserMixin):
     id: Any = models.BigAutoField(primary_key=True)
 
     class Meta:
-        db_table = "users"
+        db_table = "user"
         app_label = "qulf"
 
 
@@ -139,7 +139,7 @@ class DefaultSession(SessionMixin):
     )
 
     class Meta:
-        db_table = "sessions"
+        db_table = "session"
         app_label = "qulf"
 
 
@@ -150,7 +150,7 @@ class DefaultAccount(AccountMixin):
     )
 
     class Meta:
-        db_table = "accounts"
+        db_table = "account"
         app_label = "qulf"
 
 
@@ -158,7 +158,7 @@ class DefaultRole(RoleMixin):
     id: Any = models.BigAutoField(primary_key=True)
 
     class Meta:
-        db_table = "roles"
+        db_table = "role"
         app_label = "qulf"
 
 
@@ -166,7 +166,7 @@ class DefaultPermission(PermissionMixin):
     id: Any = models.BigAutoField(primary_key=True)
 
     class Meta:
-        db_table = "permissions"
+        db_table = "permission"
         app_label = "qulf"
 
 
@@ -180,7 +180,7 @@ class DefaultUserRole(models.Model):
     )
 
     class Meta:
-        db_table = "user_roles"
+        db_table = "user_role"
         app_label = "qulf"
 
 
@@ -194,7 +194,7 @@ class DefaultRolePermission(models.Model):
     )
 
     class Meta:
-        db_table = "role_permissions"
+        db_table = "role_permission"
         app_label = "qulf"
 
 
@@ -226,7 +226,7 @@ class DefaultPasskey(PasskeyMixin):
     )
 
     class Meta:
-        db_table = "passkeys"
+        db_table = "passkey"
         app_label = "qulf"
 
 
