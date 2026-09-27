@@ -86,7 +86,7 @@ class AccountMixin(SQLModel):
 class DefaultUser(UserMixin, table=True):
     """Default User table schema."""
 
-    __tablename__: ClassVar[Any] = "users"
+    __tablename__: ClassVar[Any] = "user"
 
     id: int | None = Field(default=None, primary_key=True)
 
@@ -94,37 +94,37 @@ class DefaultUser(UserMixin, table=True):
 class DefaultSession(SessionMixin, table=True):
     """Default Session table schema."""
 
-    __tablename__: ClassVar[Any] = "sessions"
+    __tablename__: ClassVar[Any] = "session"
 
     id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id")
+    user_id: int = Field(foreign_key="user.id")
 
 
 class DefaultAccount(AccountMixin, table=True):
     """Default Account table schema."""
 
-    __tablename__: ClassVar[Any] = "accounts"
+    __tablename__: ClassVar[Any] = "account"
 
     id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id")
+    user_id: int = Field(foreign_key="user.id")
 
 
 # RBAC Link Models (Many-to-Many)
 class UserRoleLink(SQLModel, table=True):
     __tablename__: ClassVar[Any] = "user_roles"
-    user_id: int = Field(foreign_key="users.id", primary_key=True)
-    role_id: int = Field(foreign_key="roles.id", primary_key=True)
+    user_id: int = Field(foreign_key="user.id", primary_key=True)
+    role_id: int = Field(foreign_key="role.id", primary_key=True)
 
 
 class RolePermissionLink(SQLModel, table=True):
     __tablename__: ClassVar[Any] = "role_permissions"
-    role_id: int = Field(foreign_key="roles.id", primary_key=True)
-    permission_id: int = Field(foreign_key="permissions.id", primary_key=True)
+    role_id: int = Field(foreign_key="role.id", primary_key=True)
+    permission_id: int = Field(foreign_key="permission.id", primary_key=True)
 
 
 # RBAC Default Models
 class DefaultRole(SQLModel, table=True):
-    __tablename__: ClassVar[Any] = "roles"
+    __tablename__: ClassVar[Any] = "role"
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     description: str | None = None
@@ -133,7 +133,7 @@ class DefaultRole(SQLModel, table=True):
 
 
 class DefaultPermission(SQLModel, table=True):
-    __tablename__: ClassVar[Any] = "permissions"
+    __tablename__: ClassVar[Any] = "permission"
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     description: str | None = None
@@ -149,10 +149,10 @@ class DefaultPasskey(SQLModel, table=True):
     multiple rows — one per authenticator device (Touch ID, Face ID, etc.).
     """
 
-    __tablename__: ClassVar[Any] = "passkeys"
+    __tablename__: ClassVar[Any] = "passkey"
 
     id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
     credential_id: str = Field(unique=True, index=True)
     public_key: str
     sign_count: int = 0

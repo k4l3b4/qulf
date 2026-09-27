@@ -27,7 +27,7 @@ class MotorAdapter(DatabaseAdapter):
     Concrete DatabaseAdapter backed by MongoDB via the Motor async driver.
 
     Accepts an ``AsyncIOMotorDatabase`` instance and operates on three
-    collections: ``users``, ``sessions``, and ``accounts``.
+    collections: ``user``, ``session``, and ``account``.
 
     MongoDB's native ``_id`` (ObjectId) is transparently mapped to the
     string ``id`` field expected by all Qulf Pydantic types.
@@ -42,12 +42,12 @@ class MotorAdapter(DatabaseAdapter):
     """
 
     def __init__(self, db: AsyncIOMotorDatabase[dict[str, Any]]):
-        self.users: AsyncIOMotorCollection[dict[str, Any]] = db.users
-        self.sessions: AsyncIOMotorCollection[dict[str, Any]] = db.sessions
-        self.accounts: AsyncIOMotorCollection[dict[str, Any]] = db.accounts
-        self.roles: AsyncIOMotorCollection[dict[str, Any]] = db.roles
-        self.permissions: AsyncIOMotorCollection[dict[str, Any]] = db.permissions
-        self.passkeys: AsyncIOMotorCollection[dict[str, Any]] = db.passkeys
+        self.user: AsyncIOMotorCollection[dict[str, Any]] = db.user
+        self.session: AsyncIOMotorCollection[dict[str, Any]] = db.session
+        self.account: AsyncIOMotorCollection[dict[str, Any]] = db.account
+        self.role: AsyncIOMotorCollection[dict[str, Any]] = db.role
+        self.permission: AsyncIOMotorCollection[dict[str, Any]] = db.permissions
+        self.passkey: AsyncIOMotorCollection[dict[str, Any]] = db.passkey
 
     @staticmethod
     def _id_to_str(doc: dict[str, Any]) -> dict[str, Any]:
@@ -97,13 +97,13 @@ class MotorAdapter(DatabaseAdapter):
 
     # User operations
     async def get_user_by_email(self, email: str) -> UserWithPassword | None:
-        doc = await self.users.find_one({"email": email})
+        doc = await self.user.find_one({"email": email})
         if doc is None:
             return None
         return self._to_user_with_password(doc)
 
     async def get_user_by_id(self, user_id: str | int) -> QulfUserType | None:
-        doc = await self.users.find_one({"_id": self._to_object_id(user_id)})
+        doc = await self.user.find_one({"_id": self._to_object_id(user_id)})
         if doc is None:
             return None
         return self._to_user(doc)
@@ -111,7 +111,7 @@ class MotorAdapter(DatabaseAdapter):
     async def get_user_by_email_with_password(
         self, email: str
     ) -> UserWithPassword | None:
-        doc = await self.users.find_one({"email": email})
+        doc = await self.user.find_one({"email": email})
         if doc:
             doc["id"] = str(doc.pop("_id"))
             return UserWithPassword(**doc)
@@ -120,7 +120,7 @@ class MotorAdapter(DatabaseAdapter):
     async def get_user_by_id_with_password(
         self, user_id: int | str
     ) -> UserWithPassword | None:
-        doc = await self.users.find_one({"_id": self._to_object_id(user_id)})
+        doc = await self.user.find_one({"_id": self._to_object_id(user_id)})
         if doc:
             doc["id"] = str(doc.pop("_id"))
             return UserWithPassword(**doc)
@@ -139,7 +139,7 @@ class MotorAdapter(DatabaseAdapter):
             "updated_at": None,
             "last_login": None,
         }
-        result = await self.users.insert_one(doc)
+        result = await self.user.insert_one(doc)
         doc["_id"] = result.inserted_id
         return self._to_user(doc)
 
@@ -154,7 +154,7 @@ class MotorAdapter(DatabaseAdapter):
         update_data = dict(update_data)
         update_data["updated_at"] = datetime.now(timezone.utc)
 
-        doc = await self.users.find_one_and_update(
+        doc = await self.user.find_one_and_update(
             {"_id": oid},
             {"$set": update_data},
             return_document=True,
@@ -165,9 +165,9 @@ class MotorAdapter(DatabaseAdapter):
 
     async def delete_user(self, user_id: str, strategy: DeletionStrategy) -> None:
         if strategy == DeletionStrategy.HARD:
-            await self.users.delete_one({"_id": self._to_object_id(user_id)})
+            await self.user.delete_one({"_id": self._to_object_id(user_id)})
         else:
-            await self.users.update_one(
+            await self.user.update_one(
                 {"_id": self._to_object_id(user_id)},
                 {"$set": {"deleted_at": datetime.now(timezone.utc)}},
             )
@@ -191,29 +191,29 @@ class MotorAdapter(DatabaseAdapter):
             "created_at": now,
             "updated_at": None,
         }
-        result = await self.sessions.insert_one(doc)
+        result = await self.session.insert_one(doc)
         doc["_id"] = result.inserted_id
         return self._to_session(doc)
 
     async def get_session(self, token: str) -> QulfSessionType | None:
-        doc = await self.sessions.find_one({"token": token})
+        doc = await self.session.find_one({"token": token})
         if doc is None:
             return None
         return self._to_session(doc)
 
     async def delete_session(self, token: str) -> bool:
-        result = await self.sessions.delete_one({"token": token})
+        result = await self.session.delete_one({"token": token})
         return result.deleted_count > 0
 
     async def get_user_sessions(self, user_id: str | int) -> list[QulfSessionType]:
-        cursor = self.sessions.find({"user_id": str(user_id)})
+        cursor = self.session.find({"user_id": str(user_id)})
         docs = await cursor.to_list(length=None)
         return [self._to_session(doc) for doc in docs]
 
     async def delete_user_session(
         self, user_id: str | int, token: str | None = None
     ) -> bool:
-        result = await self.sessions.delete_one(
+        result = await self.session.delete_one(
             {"user_id": str(user_id), "token": token}
         )
         return result.deleted_count > 0
@@ -226,12 +226,12 @@ class MotorAdapter(DatabaseAdapter):
             query["token"] = {"$ne": except_token}
 
         # Collect tokens before deletion so we can return them
-        cursor = self.sessions.find(query, {"token": 1})
+        cursor = self.session.find(query, {"token": 1})
         docs = await cursor.to_list(length=None)
         tokens = [doc["token"] for doc in docs]
 
         if tokens:
-            await self.sessions.delete_many(query)
+            await self.session.delete_many(query)
 
         return tokens
 
@@ -250,14 +250,14 @@ class MotorAdapter(DatabaseAdapter):
             "created_at": now,
             "updated_at": None,
         }
-        result = await self.accounts.insert_one(doc)
+        result = await self.account.insert_one(doc)
         doc["_id"] = result.inserted_id
         return self._to_account(doc)
 
     async def get_account_by_provider(
         self, provider_id: str, account_id: str
     ) -> QulfAccountType | None:
-        doc = await self.accounts.find_one(
+        doc = await self.account.find_one(
             {"provider_id": provider_id, "account_id": account_id}
         )
         if doc is None:
@@ -267,7 +267,7 @@ class MotorAdapter(DatabaseAdapter):
     async def update_account(
         self, provider_id: str, account_id: str, update_data: dict[str, Any]
     ) -> QulfAccountType | None:
-        doc = await self.accounts.find_one_and_update(
+        doc = await self.account.find_one_and_update(
             {"provider_id": provider_id, "account_id": account_id},
             {"$set": dict(update_data)},
             return_document=True,
@@ -285,12 +285,12 @@ class MotorAdapter(DatabaseAdapter):
             "created_at": datetime.now(timezone.utc),
             "updated_at": None,
         }
-        result = await self.permissions.insert_one(doc)
+        result = await self.permission.insert_one(doc)
         doc["_id"] = result.inserted_id
         return self._to_permission(doc)
 
     async def get_permission_by_name(self, name: str) -> Permission | None:
-        doc = await self.permissions.find_one({"name": name})
+        doc = await self.permission.find_one({"name": name})
         return self._to_permission(doc) if doc else None
 
     async def create_role(self, name: str, description: str | None = None) -> Role:
@@ -300,34 +300,34 @@ class MotorAdapter(DatabaseAdapter):
             "created_at": datetime.now(timezone.utc),
             "updated_at": None,
         }
-        result = await self.roles.insert_one(doc)
+        result = await self.role.insert_one(doc)
         doc["_id"] = result.inserted_id
         return self._to_role(doc)
 
     async def get_role_by_name(self, name: str) -> Role | None:
-        doc = await self.roles.find_one({"name": name})
+        doc = await self.role.find_one({"name": name})
         return self._to_role(doc) if doc else None
 
     async def assign_role_to_user(self, user_id: str | int, role_name: str) -> None:
         # Verify role exists
-        if not await self.roles.find_one({"name": role_name}):
+        if not await self.role.find_one({"name": role_name}):
             raise ValueError(f"Role '{role_name}' does not exist.")
 
         uid = self._to_object_id(user_id)
-        await self.users.update_one({"_id": uid}, {"$addToSet": {"roles": role_name}})
+        await self.user.update_one({"_id": uid}, {"$addToSet": {"roles": role_name}})
 
     async def remove_role_from_user(self, user_id: str | int, role_name: str) -> None:
         uid = self._to_object_id(user_id)
-        await self.users.update_one({"_id": uid}, {"$pull": {"roles": role_name}})
+        await self.user.update_one({"_id": uid}, {"$pull": {"roles": role_name}})
 
     async def grant_permission_to_role(
         self, role_name: str, permission_name: str
     ) -> None:
         # Verify permission exists
-        if not await self.permissions.find_one({"name": permission_name}):
+        if not await self.permission.find_one({"name": permission_name}):
             raise ValueError(f"Permission '{permission_name}' does not exist.")
 
-        result = await self.roles.update_one(
+        result = await self.role.update_one(
             {"name": role_name}, {"$addToSet": {"permissions": permission_name}}
         )
         if result.matched_count == 0:
@@ -335,24 +335,24 @@ class MotorAdapter(DatabaseAdapter):
 
     async def get_user_roles(self, user_id: str | int) -> list[Role]:
         uid = self._to_object_id(user_id)
-        user_doc = await self.users.find_one({"_id": uid}, {"roles": 1})
+        user_doc = await self.user.find_one({"_id": uid}, {"roles": 1})
 
         if not user_doc or not user_doc.get("roles"):
             return []
 
-        cursor = self.roles.find({"name": {"$in": user_doc["roles"]}})
+        cursor = self.role.find({"name": {"$in": user_doc["roles"]}})
         roles = await cursor.to_list(length=None)
 
         return [self._to_role(r) for r in roles]
 
     async def get_user_permissions(self, user_id: str | int) -> list[Permission]:
         uid = self._to_object_id(user_id)
-        user_doc = await self.users.find_one({"_id": uid}, {"roles": 1})
+        user_doc = await self.user.find_one({"_id": uid}, {"roles": 1})
 
         if not user_doc or not user_doc.get("roles"):
             return []
 
-        roles_cursor = self.roles.find(
+        roles_cursor = self.role.find(
             {"name": {"$in": user_doc["roles"]}}, {"permissions": 1}
         )
         roles = await roles_cursor.to_list(length=None)
@@ -364,7 +364,7 @@ class MotorAdapter(DatabaseAdapter):
         if not perm_names:
             return []
 
-        perms_cursor = self.permissions.find({"name": {"$in": list(perm_names)}})
+        perms_cursor = self.permission.find({"name": {"$in": list(perm_names)}})
         perms = await perms_cursor.to_list(length=None)
 
         return [self._to_permission(p) for p in perms]
@@ -383,13 +383,13 @@ class MotorAdapter(DatabaseAdapter):
             "created_at": now,
             "updated_at": None,
         }
-        result = await self.passkeys.insert_one(doc)
+        result = await self.passkey.insert_one(doc)
         doc["_id"] = result.inserted_id
         return self._to_passkey(doc)
 
     async def get_passkeys_by_user(self, user_id: str | int) -> list[PasskeyCredential]:
         """Returns all passkey credentials registered for a user."""
-        cursor = self.passkeys.find({"user_id": str(user_id)})
+        cursor = self.passkey.find({"user_id": str(user_id)})
         docs = await cursor.to_list(length=None)
         return [self._to_passkey(d) for d in docs]
 
@@ -397,7 +397,7 @@ class MotorAdapter(DatabaseAdapter):
         self, credential_id: str
     ) -> PasskeyCredential | None:
         """Looks up a single passkey document by its hex-encoded credential ID."""
-        doc = await self.passkeys.find_one({"credential_id": credential_id})
+        doc = await self.passkey.find_one({"credential_id": credential_id})
         if doc is None:
             return None
         return self._to_passkey(doc)
@@ -406,7 +406,7 @@ class MotorAdapter(DatabaseAdapter):
         self, credential_id: str, new_sign_count: int
     ) -> None:
         """Updates the monotonic sign counter after a successful authentication."""
-        await self.passkeys.update_one(
+        await self.passkey.update_one(
             {"credential_id": credential_id},
             {
                 "$set": {
@@ -418,5 +418,5 @@ class MotorAdapter(DatabaseAdapter):
 
     async def delete_passkey(self, credential_id: str) -> bool:
         """Removes a passkey document. Returns True if a document was deleted."""
-        result = await self.passkeys.delete_one({"credential_id": credential_id})
+        result = await self.passkey.delete_one({"credential_id": credential_id})
         return result.deleted_count > 0

@@ -134,7 +134,7 @@ class QulfBase(DeclarativeBase):
 class DefaultUser(QulfBase, UserMixin):
     """Default User table schema ('user') used if no custom model is supplied."""
 
-    __tablename__ = "users"
+    __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
 
@@ -142,9 +142,9 @@ class DefaultSession(QulfBase, SessionMixin):
     """Default Session table schema ('session')
     used if no custom model is supplied."""
 
-    __tablename__ = "sessions"
+    __tablename__ = "session"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
 
 
 class DefaultAccount(QulfBase, AccountMixin):
@@ -152,62 +152,62 @@ class DefaultAccount(QulfBase, AccountMixin):
     Default Account table schema ('account') used if no custom model is supplied.
     """
 
-    __tablename__ = "accounts"
+    __tablename__ = "account"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
 
 
 # Mapping table users <-> roles
-user_roles = Table(
-    "user_roles",
+user_role = Table(
+    "user_role",
     QulfBase.metadata,
     Column(
-        "user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+        "user_id", Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True
     ),
     Column(
-        "role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True
+        "role_id", Integer, ForeignKey("role.id", ondelete="CASCADE"), primary_key=True
     ),
 )
 
 # Mapping table roles <-> permissions
-role_permissions = Table(
-    "role_permissions",
+role_permission = Table(
+    "role_permission",
     QulfBase.metadata,
     Column(
-        "role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True
+        "role_id", Integer, ForeignKey("role.id", ondelete="CASCADE"), primary_key=True
     ),
     Column(
         "permission_id",
         Integer,
-        ForeignKey("permissions.id", ondelete="CASCADE"),
+        ForeignKey("permission.id", ondelete="CASCADE"),
         primary_key=True,
     ),
 )
 
 
 class DefaultRole(QulfBase, RoleMixin):
-    __tablename__ = "roles"
+    __tablename__ = "role"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
 
 class DefaultPermission(QulfBase, PermissionMixin):
-    __tablename__ = "permissions"
+    __tablename__ = "permission"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
 
 class DefaultPasskey(QulfBase):
     """
-    Default Passkey credential table (``passkeys``).
+    Default Passkey credential table (``passkey``).
 
     Each row represents one WebAuthn credential for a user. A user may have
     multiple rows — one per authenticator device (Touch ID, Face ID, etc.).
     """
 
-    __tablename__ = "passkeys"
+    __tablename__ = "passkey"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
+        ForeignKey("user.id", ondelete="CASCADE"), index=True
     )
     credential_id: Mapped[str] = mapped_column(String, unique=True, index=True)
     public_key: Mapped[str] = mapped_column(String)
@@ -569,7 +569,7 @@ class SQLAlchemyAdapter(DatabaseAdapter, SchemaAdapter):
             )
 
     async def assign_role_to_user(self, user_id: str | int, role_name: str) -> None:
-        """Link a user to a role via the user_roles mapping table."""
+        """Link a user to a role via the user_role mapping table."""
         async with self.session_maker() as session:
             # 1. Fetch the role by name to get its ID
             stmt = select(self.role_model.id).where(self.role_model.name == role_name)
@@ -581,14 +581,14 @@ class SQLAlchemyAdapter(DatabaseAdapter, SchemaAdapter):
 
             try:
                 await session.execute(
-                    insert(user_roles).values(user_id=user_id, role_id=role_id)
+                    insert(user_role).values(user_id=user_id, role_id=role_id)
                 )
                 await session.commit()
             except Exception:
                 pass  # Already assigned
 
     async def remove_role_from_user(self, user_id: str | int, role_name: str) -> None:
-        """Remove a link from the user_roles mapping table."""
+        """Remove a link from the user_role mapping table."""
         async with self.session_maker() as session:
             # 1. Get role_id
             stmt = select(self.role_model.id).where(self.role_model.name == role_name)
@@ -597,8 +597,8 @@ class SQLAlchemyAdapter(DatabaseAdapter, SchemaAdapter):
             if role_id:
                 # 2. Delete from mapping table
                 await session.execute(
-                    delete(user_roles).where(
-                        user_roles.c.user_id == user_id, user_roles.c.role_id == role_id
+                    delete(user_role).where(
+                        user_role.c.user_id == user_id, user_role.c.role_id == role_id
                     )
                 )
                 await session.commit()
@@ -606,7 +606,7 @@ class SQLAlchemyAdapter(DatabaseAdapter, SchemaAdapter):
     async def grant_permission_to_role(
         self, role_name: str, permission_name: str
     ) -> None:
-        """Link a permission to a role via the role_permissions table."""
+        """Link a permission to a role via the role_permission table."""
         async with self.session_maker() as session:
             # 1. Fetch the role by name to get its ID
             role_stmt = select(self.role_model.id).where(
@@ -630,7 +630,7 @@ class SQLAlchemyAdapter(DatabaseAdapter, SchemaAdapter):
 
             try:
                 await session.execute(
-                    insert(role_permissions).values(
+                    insert(role_permission).values(
                         permission_id=permission_id, role_id=role_id
                     )
                 )
@@ -643,8 +643,8 @@ class SQLAlchemyAdapter(DatabaseAdapter, SchemaAdapter):
         async with self.session_maker() as session:
             stmt = (
                 select(self.role_model)
-                .join(user_roles, self.role_model.id == user_roles.c.role_id)
-                .where(user_roles.c.user_id == user_id)
+                .join(user_role, self.role_model.id == user_role.c.role_id)
+                .where(user_role.c.user_id == user_id)
             )
             result = await session.execute(stmt)
             return [
@@ -657,12 +657,12 @@ class SQLAlchemyAdapter(DatabaseAdapter, SchemaAdapter):
             stmt = (
                 select(self.permission_model)
                 .join(
-                    role_permissions,
-                    self.permission_model.id == role_permissions.c.permission_id,
+                    role_permission,
+                    self.permission_model.id == role_permission.c.permission_id,
                 )
-                .join(self.role_model, self.role_model.id == role_permissions.c.role_id)
-                .join(user_roles, self.role_model.id == user_roles.c.role_id)
-                .where(user_roles.c.user_id == user_id)
+                .join(self.role_model, self.role_model.id == role_permission.c.role_id)
+                .join(user_role, self.role_model.id == user_role.c.role_id)
+                .where(user_role.c.user_id == user_id)
                 .distinct()  # strip duplicates
             )
             result = await session.execute(stmt)
