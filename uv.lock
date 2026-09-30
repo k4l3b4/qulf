@@ -2514,7 +2514,7 @@ dev = [
 requires-dist = [
     { name = "alembic", marker = "extra == 'alembic'", specifier = ">=1.19.2" },
     { name = "argon2-cffi", specifier = ">=25.1.0" },
-    { name = "django", marker = "extra == 'django'", specifier = ">=4.2" },
+    { name = "django", marker = "extra == 'django'", specifier = ">=5.2.17" },
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.136.3" },
     { name = "flask", marker = "extra == 'flask'", specifier = ">=3.0,<4.0" },
     { name = "libcst", specifier = ">=1.9.0" },
@@ -2538,7 +2538,7 @@ provides-extras = ["alembic", "django", "fastapi", "flask", "litestar", "motor",
 dev = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
     { name = "commitizen" },
-    { name = "django" },
+    { name = "django", specifier = ">=5.2.17" },
     { name = "django-stubs" },
     { name = "faker", specifier = ">=40.31.0" },
     { name = "fakeredis", extras = ["lua"] },
