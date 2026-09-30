@@ -6,6 +6,10 @@ dependencies = [
   "pyjwt>=2.13.0",
   "pyotp>=2.10.0",
   "python-settings>=0.2.3",
+  "libcst>=1.9.0",
+  "rich>=15.0.0",
+  "tomlkit>=0.15.1",
+  "typer>=0.27.1",
 ]
 description = "A framework and ORM agnostic, plugin-driven authentication library for Python."
 license = "MIT"
@@ -23,12 +27,6 @@ authors = [
 [project.optional-dependencies]
 alembic = [
   "alembic>=1.19.2",
-]
-cli = [
-  "libcst>=1.9.0",
-  "rich>=15.0.0",
-  "tomlkit>=0.15.1",
-  "typer>=0.27.1",
 ]
 django = ["django>=4.2"]
 fastapi = ["fastapi>=0.136.3"]
