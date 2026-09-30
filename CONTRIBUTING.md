@@ -16,7 +16,7 @@ Qulf is strictly decoupled into four layers. When adding features, ensure your c
 2. **Database Adapters (`src/qulf/adapters/`)**: Abstract Base Classes defining data contracts. (e.g., `SQLAlchemyAdapter`, `MotorAdapter`, `SQLModelAdapter`).
 3. **Framework Wrappers (`src/qulf/frameworks/`)**: Translates Qulf's generic `QulfRoute` into native framework endpoints (e.g., FastAPI, Django, Litestar, Flask).
 4. **Plugins (`src/qulf/plugins/`)**: The powerhouse of Qulf. Plugins expose framework-agnostic routes, dynamically inject database columns, and intercept core flows via Lifecycle Hooks.
-
+4. **Qulf CLI (`src/qulf/cli/`)**: The orchestrator of Qulf. The cli handles schema generation, dynamic field injection and migration delegation for now, with plans to build an ecosystem around it.
 ---
 
 ## Local Development Setup
@@ -56,7 +56,7 @@ We have mapped the most common commands into `mise.toml` for developer convenien
 - **Format Code**: `mise format` (Runs `ruff` formatting)
 - **Lint & Types**: `mise lint` (Runs `ruff` linter and `mypy` strict typing)
 - **Run Tests**: `mise tests` (Runs `pytest`)
-- **Run Tests w/ Coverage**: `mise tests:cov` (Generates a terminal missing-lines report)
+- **Run Tests w/ Coverage**: `mise tests:cov` (Generates an in-terminal coverage report)
 - Run **mise tasks** to get a list of all tasks that are available
 
 ---
@@ -64,18 +64,19 @@ We have mapped the most common commands into `mise.toml` for developer convenien
 ## Quality Mandates
 
 ### 1. ~99% Coverage
-We enforce **1~99% test coverage** via Codecov. 
+We enforce **~99% test coverage** via Codecov. 
 - A Pull Request **MIGHT be rejected** if it drops coverage by a substantial amount(subjective(don't let it drop at all if possible)).
 - You must test both the "happy path" and all error/exception branches.
 - Use `pytest` fixtures to keep tests DRY.
+- Tests should ideally be organized inside classes.
 
 ### 2. Strict Typing
 - All code must be strongly typed.
 - We use Pydantic V2 for runtime validation and settings.
-- `mypy` is configured strictly (`strict = true`). No untyped functions or implicit `Any` fallbacks are allowed.
+- `mypy` is configured strictly. No untyped functions or implicit `Any` fallbacks are allowed.
 
 ### 3. Commenting
-Good code explains itself. **Write comments only when they add information that cannot be inferred from the code.**
+Good code explains itself. **Write comments only when they add information that cannot be easily inferred from the code.**
 
 **DO comment:**
 - A non-obvious design decision.
@@ -117,8 +118,10 @@ Before opening a PR, ensure you can check off the following:
 - [ ] I have run `mise format` and `mise lint`.
 - [ ] I have run `mise tests:cov` and maintained **coverage %**.
 - [ ] My code uses strict type hints and passes `mypy`.
-- [ ] I have added or updated documentation in the `web/` (Fumadocs) folder if necessary.
+- [ ] I have added or updated documentation in the `web/` (Fumadocs) folder if necessary, 
+
+**we understand writing docs might feel shitty so at the very least create an issue for it and someone will pick it up :).**
 
 If your PR introduces a new Database Adapter, Framework, or Plugin, please tag us early for an architectural review.
 
-Happy hacking!
+**Thank y'all very much and Happy hacking!**
