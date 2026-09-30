@@ -48,13 +48,20 @@ from qulf.adapters.sqlmodel import SQLModelAdapter
 from qulf.frameworks.fastapi import serve_qulf
 
 # 1. Initialize your DB adapter
-
-adapter = SQLModelAdapter(engine=my_db_engine)
+engine = create_async_engine(DATABASE_URL)
+async_session = async_sessionmaker(engine)
+adapter = SQLAlchemyAdapter(...)
 
 # 2. Configure Qulf
 auth = Qulf(
     db=adapter,
-    config=QulfConfig(secret_key="<SECRET_KEY>"),  # 32 chars or more
+    config=QulfConfig(
+        project_name="Qulf FastAPI + SQLAlchemy",
+        base_url=BASE_URL,
+        secret_key=<<SECRET_KEY>>,
+        ...
+        ),
+    plugins=[...],
 )
 
 # 3. Mount it to your Framework of choice!
@@ -62,7 +69,7 @@ app = FastAPI()
 app.include_router(serve_qulf(auth), prefix="/auth")
 ```
 
-### Ecosystem (Before v1.0.0)
+### Ecosystem (BEFORE STABLE)
 
 Qulf ships with batteries included. Mix and match to fit your stack:
 
@@ -71,30 +78,21 @@ Qulf ships with batteries included. Mix and match to fit your stack:
 | ✅ **FastAPI**    | ✅ **SQLAlchemy**      | ✅ **OAuth2** (GitHub, Google)    |
 | ✅ **Litestar**   | ✅ **SQLModel**        | ✅ **TOTP 2FA** |
 | ✅ **Django**     | ✅ **MongoDB (Motor)** | ✅ **Magic Links** (Passwordless) |
-| ✅ **Flask**      | 🚧 Django *(Soon)*     | ✅ **Rate Limiting** |
-| -                 | 🚧 Prisma *(Soon)*     | ✅ **Passkeys / WebAuthn** |
+| ✅ **Flask**      | ✅ **Django**          | ✅ **Rate Limiting** |
+| -                 | -                      | ✅ **Passkeys / WebAuthn** |
 
-### Roadmap (Beyond v1.0.0)
+### Roadmap (BEYOND STABLE)
 
 Now that the core ecosystem is stable, we are focusing on Developer Experience
 (DX) and frontend integrations:
-
-- [x] Role-Based Access Control (RBAC) and Permissions Layer
-- [x] Flask Framework Adapter.
-- [x] Implement WebAuthn / Passkeys Support
-- [-] Django Framework Adapter.
-- [-] Documentation and Examples
-- [-] A CLI tool to help with migrations and bootstrapping projects among other things
-- [ ] Vanilla JS, React / Next.js SDK (Hooks and server-side utilities).
-- [ ] Admin Dashboard Plugin (A UI to manage users, sessions, and anything related to authentication and authorization).
-- [ ] More OAuth Providers, WAY more!.
+* [ ] Vanilla JS, React / Next.js SDK (Hooks and server-side utilities).
+* [ ] Admin Dashboard Plugin (A UI to manage users, sessions, and anything related to authentication and authorization).
+* [ ] More OAuth Providers, WAY more!.
 
 ### Contributing
 
-We welcome contributions! Qulf uses a modern and fast development stack powered
-by Rust-based tools.
-
- **WE WILL PUBLISH A CONTRIBUTING.md VERY SOON.** 
+We welcome contributions!, read out [CONTRIBUTING](https://github.com/qulflabs/qulf/blob/main/CONTRIBUTING.md) guide, Qulf uses a modern and fast development stack powered
+by Rust-based tools. 
 
 ### Prerequisites
 
@@ -142,7 +140,9 @@ Launch the workspace with:
 ```bash
 mise zellij
 ```
+
 or
+
 ```bash
 zellij --layout ./zlayout.kdl
 ```
@@ -168,15 +168,15 @@ The **core** tab is split into three working directories:
 └───────────────────────────┴───────────────────────────────┘
 ```
 
-- **Repository (left):** Primary development terminal for editing, Git, and running `mise` tasks.
-- **web:** Documentation website (Fumadocs / Next.js).
-- **demo:** Example application for manually testing new features.
+* **Repository (left):** Primary development terminal for editing, Git, and running `mise` tasks.
+* **web:** Documentation website (Fumadocs / Next.js).
+* **demo:** Example application for manually testing new features.
 
 The layout also includes:
 
-- Persistent tab and status bars.
-- Built-in tiled and floating layouts for additional panes.
-- A dedicated **tests** tab for running `mise run tests`, `pytest`, or other long-running commands while you continue development in the main workspace.
+* Persistent tab and status bars.
+* Built-in tiled and floating layouts for additional panes.
+* A dedicated **tests** tab for running `mise run tests`,       `pytest`, or other long-running commands while you continue development in the main workspace.
 
 Using this layout keeps documentation, examples, and the core library available at the same time without manually arranging panes every session.
 
