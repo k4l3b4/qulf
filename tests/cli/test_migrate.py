@@ -83,9 +83,67 @@ class TestQulfMigrateCommand:
 
         result = runner.invoke(app, ["-m", "custom_msg", "--apply"])
         assert result.exit_code == 0
-        assert mock_run.call_count == 2
-        # Check that the custom message was passed to autogenerate
-        assert "custom_msg" in mock_run.call_args_list[0][0][0]
+        # order: upgrade head (existing) → autogenerate → upgrade head (new)
+        assert mock_run.call_count == 3
+        first_call, second_call, third_call = (
+            mock_run.call_args_list[0][0][0],
+            mock_run.call_args_list[1][0][0],
+            mock_run.call_args_list[2][0][0],
+        )
+        assert first_call == ["alembic", "upgrade", "head"]
+        assert "custom_msg" in second_call
+        assert third_call == ["alembic", "upgrade", "head"]
+
+    @patch("qulf.cli.commands.migrate.subprocess.run")
+    def test_migrate_sqlalchemy_no_apply_only_autogenerates(
+        self, mock_run, setup_dummy_app: None
+    ) -> None:
+        """Without --apply, only autogenerate runs; no upgrade calls."""
+        sys.modules["dummy_app"].auth.db.name = "sqlalchemy"
+        Path("alembic.ini").touch()
+
+        result = runner.invoke(app, ["-m", "my_msg"])
+        assert result.exit_code == 0
+        assert mock_run.call_count == 1
+        assert "revision" in mock_run.call_args_list[0][0][0]
+        assert "my_msg" in mock_run.call_args_list[0][0][0]
+
+    @patch("qulf.cli.commands.migrate.subprocess.run")
+    def test_migrate_sqlalchemy_apply_db_at_head(
+        self, mock_run, setup_dummy_app: None
+    ) -> None:
+        """
+        --apply with DB already at head: upgrade is a no-op, autogenerate succeeds.
+        """
+        sys.modules["dummy_app"].auth.db.name = "sqlalchemy"
+        Path("alembic.ini").touch()
+
+        result = runner.invoke(app, ["--apply"])
+        assert result.exit_code == 0
+        assert mock_run.call_count == 3
+        assert mock_run.call_args_list[0][0][0] == ["alembic", "upgrade", "head"]
+        assert "revision" in mock_run.call_args_list[1][0][0]
+        assert mock_run.call_args_list[2][0][0] == ["alembic", "upgrade", "head"]
+
+    @patch("qulf.cli.commands.migrate.subprocess.run")
+    def test_migrate_sqlalchemy_apply_db_behind_head(
+        self, mock_run, setup_dummy_app: None
+    ) -> None:
+        """--apply when the DB is behind head: existing migrations are applied first."""
+        sys.modules["dummy_app"].auth.db.name = "sqlalchemy"
+        Path("alembic.ini").touch()
+
+        # Simulate the first upgrade (catching up) succeeding, then autogenerate,
+        # then the final upgrade for the new migration.
+        mock_run.return_value = None
+
+        result = runner.invoke(app, ["--apply"])
+        assert result.exit_code == 0
+        assert mock_run.call_count == 3
+        # First call must be the catch-up upgrade, not autogenerate
+        assert mock_run.call_args_list[0][0][0] == ["alembic", "upgrade", "head"]
+        assert "--autogenerate" in mock_run.call_args_list[1][0][0]
+        assert mock_run.call_args_list[2][0][0] == ["alembic", "upgrade", "head"]
 
     def test_migrate_sqlalchemy_missing_ini(self, setup_dummy_app: None) -> None:
         sys.modules["dummy_app"].auth.db.name = "sqlalchemy"

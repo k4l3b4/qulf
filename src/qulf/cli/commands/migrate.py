@@ -119,13 +119,21 @@ def migrate_models(
             )
             raise typer.Exit(1)
 
+        # Bring the DB to the current head before autogenerating; Alembic rejects
+        # --autogenerate when the database is behind the migration head.
+        if apply:
+            console.print(
+                "\n[cyan]Applying existing migrations (alembic upgrade head)...[/]"
+            )
+            _run_command(["alembic", "upgrade", "head"])
+
         console.print(
             f"[cyan]Running alembic revision --autogenerate -m '{message}'...[/]"
         )
         _run_command(["alembic", "revision", "--autogenerate", "-m", message])
 
         if apply:
-            console.print("\n[cyan]Running alembic upgrade head...[/]")
+            console.print("\n[cyan]Applying new migration (alembic upgrade head)...[/]")
             _run_command(["alembic", "upgrade", "head"])
 
     else:
