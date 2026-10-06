@@ -84,19 +84,19 @@ jobs:
             -o junit_family=legacy
 
       - name: Upload coverage to Codecov
-        if: matrix.python-version == '3.14' && github.repository == 'qulflabs/qulf' && github.actor != 'dependabot[bot]'
+        if: matrix.python-version == '3.14' && secrets.CODECOV_TOKEN != '' && github.actor != 'dependabot[bot]'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
           flags: unittests
-          # fail_ci_if_error: true
+          fail_ci_if_error: true
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && matrix.python-version == '3.14' && github.repository == 'qulflabs/qulf' && github.actor != 'dependabot[bot]' }}
+        if: ${{ !cancelled() && matrix.python-version == '3.14' && secrets.CODECOV_TOKEN != '' && github.actor != 'dependabot[bot]' }}
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./junit.xml
           report_type: test_results
-          # fail_ci_if_error: true
+          fail_ci_if_error: true
