@@ -193,6 +193,29 @@ uv run \
 echo "✅ Wheel smoke test passed successfully!"
 """
 
+# Git helpers
+[tasks.sync]
+description = "Sync local main with upstream"
+run = [
+  "git fetch upstream",
+  "git switch main",
+  "git reset --hard upstream/main",
+  "git push origin main",
+]
+
+[tasks.start]
+description = "Create a new branch from the latest upstream main"
+run = [
+  "git fetch upstream",
+  "git switch main",
+  "git reset --hard upstream/main",
+  "git switch -c ${usage_branch}",
+]
+usage = '''
+arg "<branch>"
+'''
+# Git helpers
+
 [settings]
 python.uv_venv_auto = "create|source"
 
