@@ -1,0 +1,80 @@
+---
+title: SQLAlchemy Adapter
+description: Integrating Qulf with SQLAlchemy.
+---
+
+# SQLAlchemy Adapter
+
+The SQLAlchemy adapter is the most mature and widely used adapter for Qulf. It requires SQLAlchemy 2.0+ and fully supports asynchronous engines (like `asyncpg` or `aiosqlite`).
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Installation
+
+Ensure you install Qulf with the sqlalchemy extras:
+
+<Tabs items={['uv', 'pip', 'poetry', 'pdm']}>
+  <Tab value="uv">
+    ```bash
+    uv add "qulf[sqlalchemy]"
+    ```
+  </Tab>
+  <Tab value="pip">
+    ```bash
+    pip install "qulf[sqlalchemy]"
+    ```
+  </Tab>
+  <Tab value="poetry">
+    ```bash
+    poetry add qulf -E sqlalchemy
+    ```
+  </Tab>
+  <Tab value="pdm">
+    ```bash
+    pdm add "qulf[sqlalchemy]"
+    ```
+  </Tab>
+</Tabs>
+
+## Basic Setup
+
+We provide a "batteries-included" setup. Qulf will automatically use its internal default tables (`qulf_user`, `qulf_session`, etc.).
+
+```python title="app/db.py"
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from qulf.adapters.sqlalchemy import SQLAlchemyAdapter, QulfBase
+
+# 1. Create your async engine
+engine = create_async_engine("sqlite+aiosqlite:///./app.db")
+session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+# 2. Instantiate the adapter
+db_adapter = SQLAlchemyAdapter(session_maker)
+
+# (Optional) Initialize tables automatically
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(QulfBase.metadata.create_all)
+```
+
+## Using a Custom User Model
+
+If you already have a `users` table in your application, you can map Qulf to it! Your custom model simply needs to inherit from our `UserMixin`.
+
+```python
+from sqlalchemy.orm import Mapped, mapped_column
+from qulf.adapters.sqlalchemy import SQLAlchemyAdapter, UserMixin
+# Inherit from your app's standard Base, NOT QulfBase!
+from my_app.database import Base 
+
+class MyCustomUser(Base, UserMixin):
+    __tablename__ = "users"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # Add your own app-specific columns!
+    stripe_customer_id: Mapped[str | None]
+    subscription_tier: Mapped[str | None]
+
+# Pass your custom model to the adapter
+db_adapter = SQLAlchemyAdapter(session_maker, user_model=MyCustomUser)
+```

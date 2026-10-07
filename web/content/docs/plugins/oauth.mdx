@@ -1,0 +1,180 @@
+---
+title: OAuth
+description: Allow users to sign in using their social accounts.
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# OAuth Plugin
+
+The OAuth plugin handles the complex handshake required to authenticate users via third-party providers. Qulf ships official provider implementations for **GitHub**, **Google**, **Discord**, **Apple**, and a generic **OpenID Connect** adapter.
+
+## Configuration
+
+Import `OAuthPlugin` and add it to your `plugins` list. Providers are configured via the `oauth_providers` list inside `QulfConfig`.
+
+```python title="app/auth.py"
+from qulf.core import Qulf, QulfConfig
+from qulf.plugins.oauth import OAuthPlugin
+from qulf.providers.github import GitHubProvider
+
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(
+        secret_key="your-32-char-secret-key-here!!!",
+        oauth_providers=[
+            GitHubProvider(
+                client_id="YOUR_CLIENT_ID",
+                client_secret="YOUR_CLIENT_SECRET",
+                redirect_uri="http://localhost:8000/api/auth/oauth/github/callback"
+            )
+        ]
+    ),
+    plugins=[OAuthPlugin()]
+)
+```
+
+---
+
+## Supported Providers
+
+<Tabs items={['GitHub', 'Google', 'Discord', 'Apple', 'OIDC / Generic']}>
+  <Tab value="GitHub">
+```python
+from qulf.providers.github import GitHubProvider
+
+GitHubProvider(
+    client_id="YOUR_GITHUB_CLIENT_ID",
+    client_secret="YOUR_GITHUB_CLIENT_SECRET",
+    redirect_uri="http://localhost:8000/api/auth/oauth/github/callback"
+)
+```
+
+Scopes default to `user:email`. No extra dependencies required.
+  </Tab>
+
+  <Tab value="Google">
+```python
+from qulf.providers.google import GoogleProvider
+
+GoogleProvider(
+    client_id="YOUR_GOOGLE_CLIENT_ID",
+    client_secret="YOUR_GOOGLE_CLIENT_SECRET",
+    redirect_uri="http://localhost:8000/api/auth/oauth/google/callback"
+)
+```
+
+Uses the `openid email profile` OIDC scopes via Google's OAuth2 endpoint.
+  </Tab>
+
+  <Tab value="Discord">
+```python
+from qulf.providers.discord import DiscordProvider
+
+DiscordProvider(
+    client_id="YOUR_DISCORD_APPLICATION_ID",
+    client_secret="YOUR_DISCORD_CLIENT_SECRET",
+    redirect_uri="http://localhost:8000/api/auth/oauth/discord/callback"
+)
+```
+
+Scopes default to `identify email`. Discord's API requires `identify` to access the user's ID and username; `email` to access a verified email address.
+
+> **Note:** Discord's form-encoded token endpoint differs from other providers — Qulf handles this automatically.
+  </Tab>
+
+  <Tab value="Apple">
+```python
+from qulf.providers.apple import AppleProvider
+
+AppleProvider(
+    client_id="com.example.app",          # Your Apple Services ID
+    team_id="ABCDE12345",                 # Your 10-char Apple Developer Team ID
+    key_id="FGHIJ67890",                  # Key ID from Developer portal
+    private_key=open("AuthKey.p8").read(),# Contents of the .p8 private key file
+    redirect_uri="https://example.com/api/auth/oauth/apple/callback"
+)
+```
+
+**Apple has two important differences from all other providers:**
+
+1. **No static client secret.** Qulf generates a short-lived ES256 JWT on every token exchange, signed with your `.p8` EC private key. This is handled automatically.
+2. **No userinfo endpoint.** All identity claims (`sub`, `email`) are extracted directly from the `id_token` JWT returned during the OAuth callback. The user's display name is only sent on the *first* authorization — it is not available on repeat sign-ins.
+
+**Redirect URI requirement:** Apple requires the callback to be an **HTTPS** URL registered in the Apple Developer portal. `response_mode` is automatically set to `form_post` when `name` or `email` scopes are requested.
+
+> **Dependency:** Requires `pip install cryptography` for ES256 JWT signing.
+  </Tab>
+
+  <Tab value="OIDC / Generic">
+```python
+from qulf.providers.oidc import OIDCProvider
+
+# Option 1: Auto-discovery via /.well-known/openid-configuration
+OIDCProvider(
+    client_id="YOUR_CLIENT_ID",
+    client_secret="YOUR_CLIENT_SECRET",
+    redirect_uri="http://localhost:8000/api/auth/oauth/oidc/callback",
+    issuer="https://accounts.google.com",  # or Auth0, Okta, Keycloak, etc.
+    id="google",     # custom provider slug used in routes
+    name="Google",   # human-readable name
+)
+
+# Option 2: Explicit endpoint override (no discovery)
+OIDCProvider(
+    client_id="YOUR_CLIENT_ID",
+    client_secret="YOUR_CLIENT_SECRET",
+    redirect_uri="http://localhost:8000/api/auth/oauth/myidp/callback",
+    authorization_url="https://idp.example.com/oauth/authorize",
+    token_url="https://idp.example.com/oauth/token",
+    userinfo_url="https://idp.example.com/oauth/userinfo",
+    id="myidp",
+)
+```
+
+`OIDCProvider` supports **any standard OpenID Connect compliant identity provider** — Auth0, Okta, Keycloak, Azure AD, Cognito, Ping Identity, and more. It auto-discovers endpoints from the issuer's `/.well-known/openid-configuration` or accepts explicit URL overrides.
+
+Scopes default to `["openid", "profile", "email"]`.
+  </Tab>
+</Tabs>
+
+---
+
+## How it Works
+
+When mounted, the plugin injects relative routes for every provider you configured (these are prefixed with wherever you mounted the auth router, e.g. `/api/auth`):
+
+1. **`GET /oauth/{provider}/login`** — Redirects the user to the provider's sign-in page.
+2. **`GET /oauth/{provider}/callback`** — Provider redirects back here. Qulf automatically logs the user in, creates or links their account, and issues a session cookie.
+
+### Frontend Integration
+
+```html title="frontend/login.html"
+<!-- Simple redirect links — no JS framework needed -->
+<a href="/api/auth/oauth/github/login">Login with GitHub</a>
+<a href="/api/auth/oauth/google/login">Login with Google</a>
+<a href="/api/auth/oauth/discord/login">Login with Discord</a>
+```
+
+---
+
+## Building a Custom Provider
+
+You can add support for any OAuth2 provider by subclassing `BaseOAuthProvider`:
+
+```python title="app/providers/twitter.py"
+from qulf.providers.base import BaseOAuthProvider, OAuthTokenResponse, OAuthUserProfile
+
+class TwitterProvider(BaseOAuthProvider):
+    id = "twitter"
+    name = "Twitter"
+
+    async def get_authorization_url(self, state: str) -> str:
+        ...
+
+    async def exchange_code(self, code: str) -> OAuthTokenResponse:
+        ...
+
+    async def get_user_profile(self, access_token: str) -> OAuthUserProfile:
+        ...
+```

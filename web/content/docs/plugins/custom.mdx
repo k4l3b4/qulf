@@ -1,0 +1,61 @@
+---
+title: Custom Plugins
+description: Write your own plugin to extend Qulf's functionality.
+---
+
+# Building Custom Plugins
+
+The true power of Qulf lies in its extensibility. You can build plugins to implement audit logging, custom authentication factors (like WebAuthn), or even completely new database models.
+
+## The `QulfPlugin` Interface
+
+To create a plugin, inherit from `QulfPlugin` and override the hooks you need.
+
+```python title="app/plugins/audit.py"
+from qulf.plugins.base import QulfPlugin
+from qulf.types import User, Session
+
+class AuditLogPlugin(QulfPlugin):
+    name = "audit_logger"
+    
+    # 1. Access the database adapter on initialization
+    def setup(self, auth):
+        super().setup(auth)
+        # self.auth is now the main Qulf instance!
+        
+    # 2. Intercept the sign-in event
+    async def after_sign_in(self, user: User, session: Session) -> None:
+        # Here we could insert a record into an audit_logs table
+        print(f"SECURITY ALERT: User {user.email} signed in from IP: {session.ip_address}")
+        
+    # 3. Add custom routes
+    def get_routes(self):
+        from qulf.routing import QulfRoute, QulfResponse
+        
+        async def my_custom_handler(request):
+            return QulfResponse(status_code=200, body={"hello": "from plugin!"})
+            
+        return [
+            QulfRoute(
+                path="/audit/ping",
+                methods=["GET"],
+                handler=my_custom_handler,
+                # Automatically enforce RBAC at the framework level!
+                require_roles=["admin"],
+                require_permissions=["view:audit_logs"]
+            )
+        ]
+```
+
+Notice that `QulfRoute` accepts `require_roles: list[str]` and `require_permissions: list[str]`. 
+If provided, the framework adapter will automatically enforce these checks (using the "all" mode internally) and return a `403 Forbidden` response if the user lacks them, *before* your handler is even called!
+
+## Available Hooks
+
+*   `setup(auth)`
+*   `get_custom_columns()`
+*   `get_routes()`
+*   `before_user_create(user_data)`
+*   `after_user_create(user)`
+*   `before_sign_in(email, ip_address)`
+*   `after_sign_in(user, session)`

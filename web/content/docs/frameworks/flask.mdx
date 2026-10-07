@@ -1,0 +1,146 @@
+---
+title: Flask Integration
+description: Mount Qulf authentication into Flask using native Blueprints and decorators.
+---
+
+# Flask Integration
+
+Qulf provides native support for Flask applications, allowing you to mount your authentication endpoints as a Flask `Blueprint` and protect routes using Python decorators.
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+---
+
+## 1. Installation
+
+Install Qulf with Flask extras:
+
+<Tabs items={['uv', 'pip', 'poetry', 'pdm']}>
+  <Tab value="uv">
+    ```bash
+    uv add "qulf[flask]"
+    ```
+  </Tab>
+  <Tab value="pip">
+    ```bash
+    pip install "qulf[flask]"
+    ```
+  </Tab>
+  <Tab value="poetry">
+    ```bash
+    poetry add qulf -E flask
+    ```
+  </Tab>
+  <Tab value="pdm">
+    ```bash
+    pdm add "qulf[flask]"
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## 2. Setup & Blueprint Mounting
+
+Use `serve_qulf(auth)` to convert your Qulf engine into a native Flask `Blueprint`. Registering this blueprint automatically activates endpoints like `/sign-up`, `/sign-in`, `/sign-out`, `/session`, `/forgot-password`, `/reset-password`, `/verify-email`, `/change-password`, `/delete-account`, and any routes registered by active plugins (e.g. OAuth, Passkeys, 2FA).
+
+```python title="app/main.py"
+from flask import Flask
+from qulf.core import Qulf, QulfConfig
+from qulf.adapters.sqlalchemy import SQLAlchemyAdapter
+from qulf.frameworks.flask import serve_qulf
+
+# 1. Initialize your Database Adapter & Qulf instance
+db_adapter = SQLAlchemyAdapter(session_maker)
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(secret_key="a-very-long-secret-key-at-least-32-chars!"),
+)
+
+# 2. Create Flask Application
+app = Flask(__name__)
+
+# 3. Mount Qulf Blueprint
+auth_blueprint = serve_qulf(auth)
+app.register_blueprint(auth_blueprint, url_prefix="/api/auth")
+```
+
+---
+
+## 3. Route Protection & Role-Based Access Control (RBAC)
+
+Qulf provides two Flask decorators: `@requires_role` and `@requires_permission`.
+
+When a route protected by these decorators is accessed, Qulf:
+1. Validates the session token from incoming HTTP cookies.
+2. Checks user roles and permissions in database memory.
+3. Automatically injects the authenticated `User` object into Flask's global context (`flask.g.qulf_user`).
+
+```python title="app/routes.py"
+from flask import Blueprint, jsonify, g
+from qulf.frameworks.flask import requires_role, requires_permission
+from app.auth import auth
+
+routes = Blueprint("routes", __name__)
+
+@routes.route("/api/admin/dashboard", methods=["GET"])
+@requires_role(auth, "admin")
+async def admin_dashboard():
+    # The authenticated user is automatically injected into Flask's `g` context
+    user = g.qulf_user
+    return jsonify({"message": f"Welcome Admin {user.name}!"})
+
+@routes.route("/api/articles/create", methods=["POST"])
+@requires_permission(auth, "write:articles")
+async def create_article():
+    user = g.qulf_user
+    return jsonify({"message": f"Article created by {user.name}!"})
+```
+
+---
+
+## 4. Match Modes (Multiple Roles & Permissions)
+
+You can pass a list of roles or permissions and set the matching `mode` to `"all"` (default) or `"any"`.
+
+```python title="app/routes.py"
+# User must possess BOTH 'admin' AND 'editor' roles
+@routes.route("/api/super-secret")
+@requires_role(auth, ["admin", "editor"], mode="all")
+async def secret_route():
+    user = g.qulf_user
+    return jsonify({"data": "Top secret content"})
+
+# User must possess EITHER 'editor' OR 'author' permission
+@routes.route("/api/drafts")
+@requires_permission(auth, ["write:articles", "edit:drafts"], mode="any")
+async def drafts_route():
+    user = g.qulf_user
+    return jsonify({"drafts": []})
+```
+
+---
+
+## 5. Dependency Helpers (`get_current_user` & `get_current_session`)
+
+If you prefer calling low-level session/user resolution manually inside a Flask view:
+
+```python title="app/views.py"
+from flask import request, jsonify
+from qulf.frameworks.flask import get_current_user, get_current_session
+from app.auth import auth
+
+@app.route("/api/profile")
+async def profile():
+    user_getter = get_current_user(auth)
+    user = await user_getter()
+    return jsonify({"user": user.model_dump()})
+```
+
+---
+
+## 6. Performance & Caching
+
+Checking multiple roles or permissions within a single request lifecycle executes **zero duplicate database queries**.
+
+Qulf caches fetched roles (`user.roles`) and permissions (`user.permissions`) directly on the `User` instance for the remainder of the request. Subsequent `@requires_role` or `@requires_permission` evaluations occur instantly in-memory.

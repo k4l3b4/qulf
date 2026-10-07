@@ -1,0 +1,25 @@
+---
+title: Plugins Architecture
+description: Extend Qulf with modular authentication features.
+---
+
+# The Plugin Ecosystem
+
+Qulf is designed around a modular plugin architecture. Instead of bundling every possible authentication method (like OAuth, SMS 2FA, Magic Links, Passkeys) into the core engine, Qulf exposes powerful hooks. 
+
+Features are implemented as isolated `QulfPlugin` objects that you can selectively mount.
+
+## How Plugins Work
+
+When a plugin is mounted in your `Qulf` core instance, it can:
+1. **Inject Database Columns**: The plugin can declare new columns (e.g., `github_id`) that the database adapter will automatically add to the internal schema.
+2. **Inject Routes**: The plugin can provide a list of `QulfRoute` objects (e.g., `/oauth/github`), which the framework adapter automatically exposes based on where you mount the router!
+3. **Execute Hooks**: The plugin can intercept lifecycle events like `before_user_create` or `after_sign_in` to enforce business logic or run side effects (like sending a welcome email).
+
+## Available Built-in Plugins
+
+Qulf ships with several official, enterprise-ready plugins:
+
+*   [**Magic Links**](/docs/plugins/magic-link): Passwordless email authentication.
+*   [**OAuth Providers**](/docs/plugins/oauth): Social login (GitHub, Google, etc).
+*   [**TOTP (2FA)**](/docs/plugins/totp): Time-based one-time passwords for enhanced security.

@@ -1,0 +1,4 @@
+{
+  "pages": ["index", "fastapi", "litestar", "django", "flask", "custom"],
+  "icon": "Box"
+}

@@ -1,0 +1,50 @@
+---
+title: Security by Default
+description: Industry-standard security practices built directly into Qulf.
+icon: ShieldCheck
+---
+
+# Security by Default
+
+Qulf is designed with the philosophy that authentication should be secure out-of-the-box without requiring developers to manually stitch together cryptographic primitives.
+
+## Password Hashing (Argon2)
+
+Qulf uses **Argon2** (specifically `argon2-cffi`) as the exclusive password hashing algorithm.
+
+Argon2 was the winner of the Password Hashing Competition (PHC) and provides superior resistance against both GPU cracking and side-channel attacks compared to legacy algorithms like bcrypt or PBKDF2.
+
+When a user signs up, Qulf automatically:
+1. Generates a secure random salt.
+2. Hashes the password using Argon2id.
+3. Securely compares incoming passwords against the stored hash in constant time during sign-in.
+
+## Cookie Security
+
+Session tokens are distributed using HTTP Cookies. By default, Qulf's `QulfConfig` enforces strict security constraints on these cookies to protect against XSS (Cross-Site Scripting) and CSRF (Cross-Site Request Forgery).
+
+```python title="app/config.py"
+from qulf.core import QulfConfig
+
+config = QulfConfig(
+    cookies={
+        "name": "qulf_session",
+        "secure": True,           # Enforce HTTPS!
+        "http_only": True,        # Prevent JavaScript access to the cookie
+        "same_site": "lax"        # Protect against CSRF
+    }
+)
+```
+
+### Understanding `same_site`
+By defaulting to `same_site="lax"`, Qulf prevents the browser from sending the session cookie along with cross-site POST requests. This effectively eliminates most CSRF attack vectors without requiring complex anti-CSRF token exchanges.
+
+If your frontend and backend live on entirely different domains (e.g., `app.frontend.com` and `api.backend.com`), you may need to set `same_site="none"` and `secure=True`.
+
+## Constant Time Verification
+
+Wherever possible (such as verifying session tokens or Magic Link tokens), Qulf uses `hmac.compare_digest` under the hood. This ensures that string comparisons happen in constant time, preventing timing attacks that could allow a malicious actor to guess valid tokens character-by-character.
+
+## Rate Limiting
+
+To protect against credential stuffing and brute force attacks on your endpoints, Qulf includes built-in rate limiters. See the [Rate Limiting](/docs/rate-limiting) documentation to learn how to deploy it securely.

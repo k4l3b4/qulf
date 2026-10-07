@@ -1,0 +1,57 @@
+---
+title: Introduction
+description: The comprehensive, framework-agnostic authentication library for Python.
+icon: LockIcon
+---
+
+# 🛡️ Qulf Authentication
+
+**Qulf**(ቁልፍ) - pronounced as(k’ulifi) - is a framework-agnostic, database-agnostic, heavily typed authentication library for Python. 
+
+Inspired by [Better-Auth](https://better-auth.com), Qulf aims to unify Python authentication by decoupling the core business logic from your web framework and ORM.
+
+## Features
+
+<Cards>
+  <Card title="🔌 Framework Agnostic" href="/docs/frameworks">
+    Works seamlessly with FastAPI, and easily adapts to Litestar, Django, or Flask.
+  </Card>
+  <Card title="🗄️ Bring Your Own Database" href="/docs/databases">
+    Agnostic adapters for SQLAlchemy, with more ORMs coming soon.
+  </Card>
+  <Card title="🔒 Secure by Default" href="/docs/security">
+    Industry-standard session management, Argon2 hashing, and CSRF protection.
+  </Card>
+  <Card title="⌨️ Fully Typed" href="/docs/types">
+    Built entirely on Pydantic V2 for world-class IDE autocomplete.
+  </Card>
+</Cards>
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Installation
+
+Install the core library along with the adapters you plan to use:
+
+<Tabs items={['uv', 'pip', 'poetry', 'pdm']}>
+  <Tab value="uv">
+    ```bash
+    uv add "qulf[sqlalchemy,fastapi]"
+    ```
+  </Tab>
+  <Tab value="pip">
+    ```bash
+    pip install "qulf[sqlalchemy,fastapi]"
+    ```
+  </Tab>
+  <Tab value="poetry">
+    ```bash
+    poetry add qulf -E sqlalchemy -E fastapi
+    ```
+  </Tab>
+  <Tab value="pdm">
+    ```bash
+    pdm add "qulf[sqlalchemy,fastapi]"
+    ```
+  </Tab>
+</Tabs>

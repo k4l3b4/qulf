@@ -1,0 +1,212 @@
+---
+title: Qulf CLI Tooling
+description: Automated scaffolding, AST model column injection, and migration orchestration.
+icon: Terminal
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Qulf CLI (`qulf`)
+
+The Qulf CLI provides automated scaffolding, model ejection, AST-based model column synchronization, and database migration orchestration for all supported web frameworks and ORMs.
+
+The CLI is included in the core `qulf` package — no extra install is required:
+
+```bash
+pip install qulf
+```
+
+---
+
+## 1. Project Initialization (`qulf init`)
+
+Initialize Qulf configuration in your project root and optionally eject base database models directly into your repository.
+
+```bash
+qulf init
+```
+
+### Options & Flags
+
+* `--orm [sqlalchemy|sqlmodel|django|mongo]`: Specify your database ORM.
+* `--eject / --no-eject`: Copy base user and session models directly into your project file (e.g. `src/db/models.py`). Default: `--eject`.
+
+### What `qulf init` does:
+
+1. **Configuration Creation**: Saves configuration settings into `pyproject.toml` under `[tool.qulf]` or into a standalone `.qulf.toml` file:
+
+```toml title="pyproject.toml"
+[tool.qulf]
+app = "src.main:auth"
+models = "src/db/models.py"
+```
+
+2. **Model Ejection**: Generates pre-configured User and Session models tailored for your chosen ORM:
+
+<Tabs items={['SQLAlchemy', 'SQLModel', 'Django']}>
+  <Tab value="SQLAlchemy">
+```python title="src/db/models.py"
+from datetime import datetime, timezone
+from sqlalchemy import DateTime, String
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+class Base(DeclarativeBase):
+    pass
+
+class QulfUserModel(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    email: Mapped[str] = mapped_column(String, unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String)
+    name: Mapped[str | None] = mapped_column(String, nullable=True)
+    username: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+class QulfSessionModel(Base):
+    __tablename__ = "sessions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, index=True)
+    token: Mapped[str] = mapped_column(String, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+```
+  </Tab>
+  <Tab value="SQLModel">
+```python title="src/db/models.py"
+from datetime import datetime, timezone
+from sqlmodel import Field, SQLModel
+
+class QulfUserModel(SQLModel, table=True):
+    __tablename__ = "users"
+
+    id: str = Field(primary_key=True)
+    email: str = Field(unique=True, index=True)
+    hashed_password: str
+    name: str | None = Field(default=None)
+    username: str | None = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class QulfSessionModel(SQLModel, table=True):
+    __tablename__ = "sessions"
+
+    id: str = Field(primary_key=True)
+    user_id: str = Field(index=True)
+    token: str = Field(unique=True, index=True)
+    expires_at: datetime
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+```
+  </Tab>
+  <Tab value="Django">
+```python title="your_app/models.py"
+from django.db import models
+
+class QulfUserModel(models.Model):
+    id = models.CharField(max_length=255, primary_key=True)
+    email = models.EmailField(unique=True, db_index=True)
+    hashed_password = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, null=True, blank=True)
+    username = models.CharField(max_length=255, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "users"
+
+class QulfSessionModel(models.Model):
+    id = models.CharField(max_length=255, primary_key=True)
+    user_id = models.CharField(max_length=255, db_index=True)
+    token = models.CharField(max_length=512, unique=True, db_index=True)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "sessions"
+```
+  </Tab>
+</Tabs>
+
+---
+
+## 2. AST Plugin Schema Synchronization (`qulf sync`)
+
+When you add plugins to your `Qulf` engine (such as `OAuthPlugin`, `TOTPPlugin`, or `MagicLinkPlugin`), those plugins require additional database columns or tables.
+
+`qulf sync` uses **LibCST (Concrete Syntax Tree parsing)** to safely parse and mutate your existing `models.py` file, inserting necessary columns without breaking formatting, comments, or custom business logic.
+
+```bash
+qulf sync
+```
+
+### Flags
+
+* `-v, --verbose`: Print detailed diagnostic logs regarding skipped fields (fields already defined in your models).
+
+### How it works:
+
+1. Loads your `Qulf` instance defined in `pyproject.toml` (e.g., `app = "src.main:auth"`).
+2. Inspects registered plugins for column requirements (e.g., `TOTPPlugin` requests `totp_secret`, `totp_enabled`, `totp_backup_codes`).
+3. Uses AST parsing to safely inject fields into your `QulfUserModel` / `QulfSessionModel` classes.
+
+```python title="src/db/models.py (After qulf sync)"
+class QulfUserModel(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    email:Mapped[str] = mapped_column(String, unique=True, index=True)
+    # ... base fields ...
+
+    # Injected by TOTPPlugin
+    totp_secret: Mapped[str | None] = mapped_column(String, nullable=True)
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+```
+
+---
+
+## 3. Migration Orchestration (`qulf migrate`)
+
+`qulf migrate` inspects your configured ORM adapter and automatically invokes the native migration tools for your stack.
+
+```bash
+qulf migrate
+```
+
+### Options & Flags
+
+* `-a, --apply`: Automatically apply generated revisions to the target database immediately.
+* `-m, --message TEXT`: Custom commit message for Alembic revisions (default: `"qulf_auto_migration"`).
+
+### Behavior by ORM:
+
+* **SQLAlchemy & SQLModel**: Checks for `alembic.ini` and runs:
+  ```bash
+  alembic revision --autogenerate -m "qulf_auto_migration"
+  # If --apply is set:
+  alembic upgrade head
+  ```
+* **Django**: Checks for `manage.py` and runs:
+  ```bash
+  python manage.py makemigrations
+  # If --apply is set:
+  python manage.py migrate
+  ```
+* **Motor (MongoDB)**: Motor is schemaless — `qulf migrate` prints a confirmation notice and exits cleanly (`code 0`).
+
+---
+
+## Workflow Summary
+
+```bash
+# 1. Initialize configuration and models
+qulf init --orm sqlalchemy
+
+# 2. Add plugins in python code, then sync AST models
+qulf sync --verbose
+
+# 3. Autogenerate & apply migrations
+qulf migrate --apply
+```

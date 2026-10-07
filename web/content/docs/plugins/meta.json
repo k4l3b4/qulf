@@ -1,0 +1,4 @@
+{
+  "pages": ["index", "magic-link", "oauth", "passkey", "totp", "custom"],
+  "icon": "Plug"
+}

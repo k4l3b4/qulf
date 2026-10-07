@@ -1,0 +1,33 @@
+---
+title: Database Adapters
+description: Bring your own database. Learn how Qulf stores users and sessions.
+---
+
+# Database Adapters
+
+Qulf is designed to be completely decoupled from any specific ORM or database driver. It does not run SQL queries directly. Instead, it delegates all persistent storage operations to a **Database Adapter**.
+
+This allows you to drop Qulf into any existing architecture—whether you are using SQLAlchemy, SQLModel, Prisma, or a NoSQL database like MongoDB.
+
+## Officially Supported Adapters
+
+We currently provide out-of-the-box support for the following Python ORMs:
+
+*   [**SQLAlchemy**](/docs/adapters/sqlalchemy): The most widely used Python SQL toolkit.
+*   [**SQLModel**](/docs/adapters/sqlmodel): FastAPI's sister project.
+*   [**Django ORM**](/docs/adapters/django): Django's ORM slice(We support the ORM and Framework independently, you can checkout the Django framework docs [here]((/docs/frameworks/django))).
+*   [**MongoDB (Motor)**](/docs/adapters/motor): Async driver for MongoDB.
+
+*Note: More adapters (like Prisma and Tortoise ORM) are coming soon.*
+
+## Defining the Database Schema
+
+By default, Qulf's built-in adapters define the following standard tables/collections:
+
+1.  `user`: Stores the user profile (email, name, hashed password, etc).
+2.  `session`: Stores active session tokens (if using database sessions).
+3.  `account`: Stores linked third-party OAuth accounts.
+
+### Custom Tables / Extending Schemas
+
+You aren't forced to use Qulf's default tables! If you already have a `users` table in your application, you can instruct the adapter to use your custom Django, SQLAlchemy or SQLModel classes. Qulf will adapt to your existing architecture.

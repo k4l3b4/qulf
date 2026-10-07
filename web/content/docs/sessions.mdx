@@ -1,0 +1,78 @@
+---
+title: Sessions
+description: Learn how Qulf manages secure authentication sessions.
+icon: Key
+---
+
+# Session Management
+
+Qulf supports two primary session management strategies: **Stateful Database Sessions** and **Stateless JWT Sessions**. You can configure this via the `QulfConfig`.
+
+## Strategy: Database (Default)
+
+By default, Qulf uses stateful database sessions. When a user signs in, a cryptographically secure random token is generated and stored in your database alongside the user ID, expiration date, and optional device metadata (IP address, user agent).
+
+```python title="app/config.py"
+from qulf.core import QulfConfig
+
+config = QulfConfig(
+    sessions={
+        "strategy": "database",
+        "expires_in_days": 7
+    }
+)
+```
+
+**Pros:**
+*   You can instantly revoke sessions (e.g., "Sign out of all devices").
+*   You can list active sessions to the user.
+
+**Cons:**
+*   Requires a database query to validate the token on every authenticated request.
+
+## Strategy: JWT
+
+If you require high concurrency and want to avoid database lookups on every request, you can switch to stateless JSON Web Tokens (JWT).
+
+```python title="app/config.py"
+from qulf.core import QulfConfig
+
+config = QulfConfig(
+    sessions={
+        "strategy": "jwt",
+        "expires_in_days": 1
+    }
+)
+```
+*Note: A `QULF_SECRET_KEY` environment variable is required to sign the tokens securely!*
+
+**Pros:**
+*   Zero database queries required to validate a user.
+*   Incredibly fast for microservices.
+
+**Cons:**
+*   You cannot revoke a JWT before its expiration date.
+
+## Managing Sessions Programmatically
+
+The `Qulf` core object exposes methods to let you manage active sessions.
+
+### Revoking a specific session
+```python title="app/routes.py"
+from app.auth import auth
+
+await auth.revoke_session(user_id=123, token="session_token_to_delete")
+```
+
+### Revoking ALL sessions for a user
+Useful when a user changes their password or suspects their account was compromised.
+
+```python title="app/routes.py"
+from app.auth import auth
+
+# Signs out all devices
+await auth.revoke_all_user_sessions(user_id=123)
+
+# Signs out all devices EXCEPT the current one
+await auth.revoke_all_user_sessions(user_id=123, except_token="current_session_token")
+```

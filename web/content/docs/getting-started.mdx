@@ -1,0 +1,229 @@
+---
+title: Quickstart Guide
+description: Step-by-step guide to adding complete authentication to your Python application.
+icon: Play
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Quickstart Guide
+
+This guide covers setting up Qulf with your choice of **web framework**, **database ORM**, and the **Qulf CLI tool**.
+
+---
+
+## 1. Installation
+
+Install Qulf with CLI support (`qulf[cli]`):
+
+<Tabs items={['uv', 'pip', 'poetry', 'pdm']}>
+  <Tab value="uv">
+    ```bash
+    uv add "qulf[cli]"
+    ```
+  </Tab>
+  <Tab value="pip">
+    ```bash
+    pip install "qulf[cli]"
+    ```
+  </Tab>
+  <Tab value="poetry">
+    ```bash
+    poetry add "qulf[cli]"
+    ```
+  </Tab>
+  <Tab value="pdm">
+    ```bash
+    pdm add "qulf[cli]"
+    ```
+  </Tab>
+</Tabs>
+
+> **Optional Extras:**
+> - `"qulf[cli]"` — AST schema sync & migration tool (`qulf init`, `qulf sync`, `qulf migrate`)
+> - `"qulf[passkey]"` — WebAuthn / Passkey biometric login (`webauthn`)
+> - Framework extras: `"qulf[fastapi]"`, `"qulf[litestar]"`, `"qulf[flask]"`, `"qulf[django]"`
+> - Database extras: `"qulf[sqlmodel]"`, `"qulf[motor]"`
+
+
+---
+
+## 2. CLI Scaffolding (`qulf init`)
+
+Run `qulf init` to interactively generate your configuration file (`pyproject.toml` or `.qulf.toml`) and scaffold database models directly in your project:
+
+```bash
+qulf init
+```
+
+---
+
+## 3. Configure Database Adapter
+
+Qulf is database-agnostic. Select your ORM to see how to initialize the `DatabaseAdapter` and configure your engine.
+
+<Tabs items={['SQLAlchemy', 'SQLModel', 'Django ORM', 'Motor (MongoDB)']}>
+  <Tab value="SQLAlchemy">
+```python title="app/auth.py"
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from qulf.adapters.sqlalchemy import SQLAlchemyAdapter
+from qulf.core import Qulf, QulfConfig
+
+engine = create_async_engine("sqlite+aiosqlite:///./app.db")
+session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+db_adapter = SQLAlchemyAdapter(session_maker)
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(secret_key="a-very-long-secret-key-at-least-32-chars!"),
+)
+```
+  </Tab>
+  <Tab value="SQLModel">
+```python title="app/auth.py"
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from qulf.adapters.sqlmodel import SQLModelAdapter
+from qulf.core import Qulf, QulfConfig
+
+engine = create_async_engine("sqlite+aiosqlite:///./app.db")
+session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+db_adapter = SQLModelAdapter(session_maker)
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(secret_key="a-very-long-secret-key-at-least-32-chars!"),
+)
+```
+  </Tab>
+  <Tab value="Django ORM">
+```python title="your_app/auth.py"
+from qulf.adapters.django import DjangoAdapter
+from qulf.core import Qulf, QulfConfig
+
+db_adapter = DjangoAdapter()
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(secret_key="a-very-long-secret-key-at-least-32-chars!"),
+)
+```
+  </Tab>
+  <Tab value="Motor (MongoDB)">
+```python title="app/auth.py"
+import motor.motor_asyncio
+from qulf.adapters.motor import MotorAdapter
+from qulf.core import Qulf, QulfConfig
+
+client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
+db = client["my_database"]
+
+db_adapter = MotorAdapter(db)
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(secret_key="a-very-long-secret-key-at-least-32-chars!"),
+)
+```
+  </Tab>
+</Tabs>
+
+---
+
+## 4. Mount into Web Framework
+
+Mount Qulf into your framework of choice using `serve_qulf(auth)`.
+
+<Tabs items={['FastAPI', 'Litestar', 'Django', 'Flask']}>
+  <Tab value="FastAPI">
+```python title="app/main.py"
+from fastapi import FastAPI, Depends
+from qulf.frameworks.fastapi import serve_qulf, get_current_user, RequiresRole
+from app.auth import auth
+from qulf.types import User
+
+app = FastAPI()
+
+# Mount authentication routes (/sign-up, /sign-in, /session, /sign-out)
+app.include_router(serve_qulf(auth), prefix="/api/auth")
+
+# Protect native routes
+@app.get("/api/me")
+async def get_me(user: User = Depends(get_current_user(auth))):
+    return {"user": user}
+
+@app.get("/api/admin", dependencies=[Depends(RequiresRole(auth, "admin"))])
+async def admin_only():
+    return {"status": "authorized"}
+```
+  </Tab>
+  <Tab value="Litestar">
+```python title="app/main.py"
+from litestar import Litestar, get, Request
+from qulf.frameworks.litestar import serve_qulf, get_current_user, RequiresRole
+from app.auth import auth
+
+@get("/api/me")
+async def get_me(request: Request) -> dict:
+    user = await get_current_user(auth)(request)
+    return {"user": user.model_dump()}
+
+app = Litestar(
+    route_handlers=[
+        serve_qulf(auth), # Mounts authentication router
+        get_me,
+    ]
+)
+```
+  </Tab>
+  <Tab value="Django">
+```python title="myproject/urls.py"
+from django.urls import path, include
+from qulf.frameworks.django import serve_qulf, requires_role
+from django.http import JsonResponse
+from app.auth import auth
+
+@requires_role(auth, "admin")
+async def admin_dashboard(request):
+    user = request.qulf_user
+    return JsonResponse({"message": f"Hello Admin {user.name}"})
+
+urlpatterns = [
+    path("api/auth/", include(serve_qulf(auth))),
+    path("api/admin/", admin_dashboard),
+]
+```
+  </Tab>
+  <Tab value="Flask">
+```python title="app/main.py"
+from flask import Flask, jsonify, g
+from qulf.frameworks.flask import serve_qulf, requires_role
+from app.auth import auth
+
+app = Flask(__name__)
+
+# Mount Qulf Blueprint
+auth_blueprint = serve_qulf(auth)
+app.register_blueprint(auth_blueprint, url_prefix="/api/auth")
+
+# Protected Flask route
+@app.route("/api/admin/dashboard", methods=["GET"])
+@requires_role(auth, "admin")
+async def admin_dashboard():
+    user = g.qulf_user
+    return jsonify({"message": f"Welcome Admin {user.name}!"})
+```
+  </Tab>
+</Tabs>
+
+---
+
+## 5. Schema Sync & Migration Workflow
+
+Whenever you add plugins (e.g. `OAuthPlugin`, `TOTPPlugin`, `PasskeyPlugin`), run `qulf sync` to inject required fields into your ORM models, followed by `qulf migrate` to apply migrations:
+
+```bash
+# 1. Inject plugin columns into models.py via AST
+qulf sync
+
+# 2. Autogenerate & apply database migrations
+qulf migrate --apply
+```

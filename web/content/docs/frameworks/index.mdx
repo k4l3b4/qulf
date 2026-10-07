@@ -1,0 +1,55 @@
+---
+title: Framework Integrations
+description: Mount Qulf seamlessly into your web framework of choice.
+---
+
+# Framework Adapters
+
+Qulf's core engine processes abstract `QulfRequest` objects and returns `QulfResponse` objects. It is completely decoupled from framework-specific HTTP server implementations.
+
+To bridge the gap between Qulf and your web framework, Qulf provides **Framework Adapters** — thin translation layers that translate your framework's native HTTP requests and responses into Qulf abstractions.
+
+---
+
+## Officially Supported Frameworks
+
+*   [**FastAPI**](/docs/frameworks/fastapi): Mount Qulf as a native `APIRouter` with Pydantic support and FastAPI dependencies (`get_current_user`, `RequiresRole`, `RequiresPermission`).
+*   [**Litestar**](/docs/frameworks/litestar): Full async support. Mount Qulf as a native Litestar `Router` with `Provide()` dependencies.
+*   [**Django**](/docs/frameworks/django): Mount Qulf as standard Django `urlpatterns` with async decorators (`@requires_role`, `@requires_permission`).
+*   [**Flask**](/docs/frameworks/flask): Mount Qulf as a native Flask `Blueprint` with automatic `g.qulf_user` context injection and python route protection decorators.
+
+---
+
+## How it works
+
+The framework adapter is responsible for:
+
+1. Intercepting native HTTP requests (e.g., `fastapi.Request`, `flask.request`, `django.http.HttpRequest`).
+2. Normalizing them into a standard `QulfRequest` (extracting headers, cookies, query parameters, and JSON payloads).
+3. Passing the request to the Qulf core engine for business logic processing.
+4. Translating the resulting `QulfResponse` back into the framework's native response object (including setting `HttpOnly`, `SameSite`, and `Secure` cookies).
+
+The entry point function is identical across all frameworks:
+
+```python
+serve_qulf(auth)  # Returns framework-native router / blueprint / urlpatterns
+```
+
+---
+
+## Framework Comparison
+
+| Framework | Router Function | Dependency / Decorator | User Context Injection |
+| :--- | :--- | :--- | :--- |
+| **FastAPI** | `serve_qulf(auth)` → `APIRouter` | `Depends(get_current_user(auth))` | Injected via FastAPI Depends |
+| **Litestar** | `serve_qulf(auth)` → `Router` | `Provide(get_current_user(auth))` | Injected via Litestar Provide |
+| **Flask** | `serve_qulf(auth)` → `Blueprint` | `@requires_role(auth, "admin")` | `flask.g.qulf_user` |
+| **Django** | `serve_qulf(auth)` → `urlpatterns` | `@requires_role(auth, "admin")` | `request.qulf_user` |
+
+---
+
+## Automatic Plugin Route Registration
+
+When plugins are attached to `Qulf(plugins=[...])`, `serve_qulf(auth)` automatically detects and registers all endpoints exposed by those plugins (e.g. OAuth `/oauth/{provider}/login`, WebAuthn `/passkey/login/begin`, TOTP `/totp/setup`).
+
+You never need to manually wire plugin routes!
