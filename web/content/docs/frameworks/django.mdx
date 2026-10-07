@@ -1,0 +1,151 @@
+---
+title: Django
+description: Integrating Qulf with Django.
+---
+
+# Django Integration
+
+Qulf supports Django with full async support, returning a list of standard Django URL patterns that you include in your `urls.py`.
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Installation
+
+<Tabs items={['uv', 'pip', 'poetry', 'pdm']}>
+  <Tab value="uv">
+    ```bash
+    uv add qulf django
+    ```
+  </Tab>
+  <Tab value="pip">
+    ```bash
+    pip install qulf django
+    ```
+  </Tab>
+  <Tab value="poetry">
+    ```bash
+    poetry add qulf django
+    ```
+  </Tab>
+  <Tab value="pdm">
+    ```bash
+    pdm add qulf django
+    ```
+  </Tab>
+</Tabs>
+
+## Mounting the Routes
+
+`serve_qulf` returns a standard Python `list` of Django `path()` objects. Include it in your project's `urls.py` like any other URL set.
+
+```python title="myproject/urls.py"
+from django.urls import path, include
+from qulf.frameworks.django import serve_qulf
+from myapp.auth import auth  # Your Qulf core instance
+
+urlpatterns = [
+    # Mount all auth routes under /api/auth/
+    path("api/auth/", include(serve_qulf(auth))),
+]
+```
+
+This exposes:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/sign-up` | Register a new user |
+| `POST` | `/sign-in` | Sign in and receive a session cookie |
+| `POST` | `/sign-out` | Sign out and delete the session cookie |
+| `POST` | `/forgot-password` | Generate a password reset link |
+| `POST` | `/reset-password` | Reset the user's password using the token |
+| `POST` | `/verify-email` | Verify the user's email address |
+| `POST` | `/change-password` | Change an authenticated user's password |
+| `DELETE` | `/delete-account` | Delete the authenticated user's account |
+
+Plugin routes are automatically included in the list.
+
+> **Note:** All Qulf views are wrapped with `@csrf_exempt` internally because Qulf manages its own CSRF protection via the `SameSite` cookie attribute. You should **not** apply Django's `CsrfViewMiddleware` to these routes.
+
+## Setting up the Qulf instance
+
+```python title="myapp/auth.py"
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from qulf import Qulf, QulfConfig
+from qulf.adapters.sqlalchemy import SQLAlchemyAdapter, QulfBase
+
+engine = create_async_engine("sqlite+aiosqlite:///./app.db")
+session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+db = SQLAlchemyAdapter(session_maker)
+
+auth = Qulf(
+    db=db,
+    config=QulfConfig(secret_key="your-32-char-secret-key-here!!!"),
+)
+```
+
+> **Important:** Django's ORM is not async-native. Use SQLAlchemy's async engine as your database adapter when using Qulf with Django.
+
+## Protecting Views
+
+Extract and validate the current session in any view using `get_session_from_cookies`:
+
+```python title="myapp/views.py"
+from django.http import HttpRequest, JsonResponse
+from myapp.auth import auth
+
+async def dashboard(request: HttpRequest) -> JsonResponse:
+    result = await auth.get_session_from_cookies(request.COOKIES)
+    if not result:
+        return JsonResponse({"detail": "Unauthorized"}, status=401)
+
+    session, user = result
+    return JsonResponse({"message": f"Welcome, {user.name}!"})
+```
+
+## Role-Based Access Control (RBAC)
+
+Qulf provides custom Django decorators (`@requires_role` and `@requires_permission`) for simple RBAC enforcement.
+
+```python title="myapp/views.py"
+from django.http import HttpRequest, JsonResponse
+from qulf.frameworks.django import requires_role, requires_permission
+from myapp.auth import auth
+
+@requires_role(auth, "admin")
+async def admin_dashboard(request: HttpRequest) -> JsonResponse:
+    # The authenticated user is automatically attached to the request
+    user = request.qulf_user
+    return JsonResponse({"message": f"Welcome Admin {user.name}!"})
+
+@requires_permission(auth, "write:articles")
+async def create_article(request: HttpRequest) -> JsonResponse:
+    return JsonResponse({"message": "Article created!"})
+```
+
+### Multiple Roles & Match Modes
+
+You can also pass a list of roles or permissions and specify a `mode` (`"all"` or `"any"`). By default, `mode="all"` is used.
+
+```python
+# User must have BOTH 'admin' and 'editor' roles
+@requires_role(auth, ["admin", "editor"], mode="all")
+async def secret_route(request: HttpRequest) -> JsonResponse:
+    pass
+
+# User can have EITHER 'editor' OR 'author' permission
+@requires_permission(auth, ["write:articles", "edit:drafts"], mode="any")
+async def drafts_route(request: HttpRequest) -> JsonResponse:
+    pass
+```
+
+### Performance & Caching
+
+You might wonder: *Does checking multiple roles or permissions hit the database multiple times?* 
+**No.** Qulf optimizes this automatically. 
+
+When you check a role or permission for the first time during a request, Qulf fetches the relationships from the database and caches them directly on the `User` object (`user.roles` and `user.permissions`). Subsequent RBAC checks in the same request life-cycle evaluate instantly in-memory without executing any additional SQL queries!
+
+## Cookie `SameSite` Capitalization
+
+Django expects the `samesite` value capitalized (`"Lax"`, `"Strict"`, `"None"`), while Qulf stores it lowercase internally. The Django adapter handles this conversion automatically.

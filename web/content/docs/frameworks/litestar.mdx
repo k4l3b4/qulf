@@ -1,0 +1,159 @@
+---
+title: Litestar
+description: Integrating Qulf with Litestar.
+---
+
+# Litestar Integration
+
+Qulf provides first-class support for [Litestar](https://litestar.dev/), allowing you to instantly generate authentication endpoints and securely protect your routes using Litestar's dependency injection system.
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Installation
+
+Ensure you install Qulf and Litestar:
+
+<Tabs items={['uv', 'pip', 'poetry', 'pdm']}>
+  <Tab value="uv">
+    ```bash
+    uv add qulf litestar[standard]
+    ```
+  </Tab>
+  <Tab value="pip">
+    ```bash
+    pip install qulf "litestar[standard]"
+    ```
+  </Tab>
+  <Tab value="poetry">
+    ```bash
+    poetry add qulf "litestar[standard]"
+    ```
+  </Tab>
+  <Tab value="pdm">
+    ```bash
+    pdm add qulf "litestar[standard]"
+    ```
+  </Tab>
+</Tabs>
+
+## Mounting the Routes
+
+Use `serve_qulf` to convert your Qulf engine into a native Litestar `Router`. This automatically registers `/sign-in`, `/sign-up`, `/sign-out`, and any routes injected by your plugins.
+
+```python title="app/main.py"
+from litestar import Litestar
+from qulf.frameworks.litestar import serve_qulf
+from app.auth import auth  # Your Qulf core instance
+
+# serve_qulf returns a Litestar Router
+auth_router = serve_qulf(auth)
+
+app = Litestar(route_handlers=[auth_router])
+```
+
+To mount under a prefix (e.g. `/api/auth`), wrap the router:
+
+```python title="app/main.py"
+from litestar import Litestar, Router
+from qulf.frameworks.litestar import serve_qulf
+from app.auth import auth
+
+auth_routes = serve_qulf(auth)
+
+# Nest the router under /api/auth
+api_router = Router(path="/api/auth", route_handlers=[auth_routes])
+
+app = Litestar(route_handlers=[api_router])
+```
+
+## Protecting Routes (Dependency Injection)
+
+Use Litestar's `Provide` system to inject the current user into protected handlers:
+
+```python title="app/routes.py"
+from litestar import get, Request
+from litestar.di import Provide
+from litestar.exceptions import HTTPException
+from qulf.types import User
+from app.auth import auth
+
+async def get_current_user(request: Request) -> User:
+    result = await auth.get_session_from_cookies(request.cookies)
+    if not result:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    session, user = result
+    return user
+
+@get("/dashboard", dependencies={"current_user": Provide(get_current_user)})
+async def dashboard(current_user: User) -> dict:
+    return {"message": f"Welcome, {current_user.name}!"}
+```
+
+## Role-Based Access Control (RBAC)
+
+Qulf provides native Litestar dependencies to enforce roles and permissions via `Provide`.
+
+```python title="app/routes.py"
+from litestar import post, get
+from litestar.di import Provide
+from qulf.frameworks.litestar import RequiresRole, RequiresPermission
+from app.auth import auth
+
+@post(
+    "/admin/settings",
+    dependencies={"user": Provide(RequiresRole(auth, "admin"))}
+)
+async def admin_settings(user: dict) -> dict:
+    return {"message": "Welcome Admin"}
+
+@post(
+    "/articles",
+    dependencies={"user": Provide(RequiresPermission(auth, "write:articles"))}
+)
+async def create_article(user: dict) -> dict:
+    return {"message": "Article created"}
+```
+
+### Multiple Roles & Match Modes
+
+You can also pass a list of roles or permissions and specify a `mode` (`"all"` or `"any"`). By default, `mode="all"` is used.
+
+```python
+# User must have BOTH 'admin' and 'editor' roles
+@post(
+    "/super-secret",
+    dependencies={"user": Provide(RequiresRole(auth, ["admin", "editor"], mode="all"))}
+)
+async def secret_route(user: dict) -> dict:
+    pass
+
+# User can have EITHER 'editor' OR 'author' permission
+@post(
+    "/drafts",
+    dependencies={"user": Provide(RequiresPermission(auth, ["write:articles", "edit:drafts"], mode="any"))}
+)
+async def drafts_route(user: dict) -> dict:
+    pass
+```
+
+### Performance & Caching
+
+You might wonder: *Does checking multiple roles or permissions hit the database multiple times?* 
+**No.** Qulf optimizes this automatically. 
+
+When you check a role or permission for the first time during a request, Qulf fetches the relationships from the database and caches them directly on the `User` object (`user.roles` and `user.permissions`). Subsequent RBAC checks in the same request life-cycle evaluate instantly in-memory without executing any additional SQL queries!
+
+## Available Endpoints
+
+After mounting, the following endpoints are available:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/sign-up` | Register a new user |
+| `POST` | `/sign-in` | Sign in and receive a session cookie |
+| `POST` | `/sign-out` | Sign out and delete the session cookie |
+| `POST` | `/forgot-password` | Generate a password reset link |
+| `POST` | `/reset-password` | Reset the user's password using the token |
+| `POST` | `/verify-email` | Verify the user's email address |
+| `POST` | `/change-password` | Change an authenticated user's password |
+| `DELETE` | `/account` | Delete the authenticated user's account |

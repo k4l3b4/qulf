@@ -1,0 +1,88 @@
+---
+title: MongoDB (Motor) Adapter
+description: Integrating Qulf with MongoDB using the Motor async driver.
+---
+
+# MongoDB (Motor) Adapter
+
+Qulf supports MongoDB through the **Motor** async driver. The `MotorAdapter` implements the same `DatabaseAdapter` interface as the SQL adapters, so switching ORMs requires only changing one line.
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Installation
+
+<Tabs items={['uv', 'pip', 'poetry', 'pdm']}>
+  <Tab value="uv">
+    ```bash
+    uv add "qulf[motor]"
+    ```
+  </Tab>
+  <Tab value="pip">
+    ```bash
+    pip install "qulf[motor]"
+    ```
+  </Tab>
+  <Tab value="poetry">
+    ```bash
+    poetry add qulf -E motor
+    ```
+  </Tab>
+  <Tab value="pdm">
+    ```bash
+    pdm add "qulf[motor]"
+    ```
+  </Tab>
+</Tabs>
+
+## Basic Setup
+
+```python title="app/db.py"
+import motor.motor_asyncio
+from qulf.adapters.motor import MotorAdapter
+
+# 1. Create your Motor client
+client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
+database = client["myapp"]
+
+# 2. Instantiate the adapter
+db_adapter = MotorAdapter(database)
+```
+
+```python title="app/auth.py"
+from qulf import Qulf, QulfConfig
+from app.db import db_adapter
+
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(secret_key="your-32-char-secret-key-here!!!"),
+)
+```
+
+## Collections
+
+By default, the Motor adapter uses the following MongoDB collections:
+
+| Collection | Description |
+|------------|-------------|
+| `user` | Stores user profiles |
+| `session` | Stores active session tokens |
+| `account` | Stores linked OAuth accounts |
+
+Documents use MongoDB's native `_id` field as the primary key. The adapter automatically serializes and deserializes between MongoDB's `ObjectId` and Qulf's `str` type.
+
+## Custom Collection Names
+
+You can pass custom collection names if your database already has an existing schema:
+
+```python title="app/db.py"
+db_adapter = MotorAdapter(
+    database,
+    user_collection="users",
+    session_collection="auth_sessions",
+    account_collection="oauth_accounts",
+)
+```
+
+## Performance Tip
+
+Motor's async driver is a thin async wrapper around PyMongo. For best performance, create your client **once** at application startup and reuse it for the lifetime of your process. Avoid creating a new `AsyncIOMotorClient` per request.

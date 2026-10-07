@@ -1,0 +1,59 @@
+---
+title: Validators
+description: Fluent chainable validation for user objects.
+icon: FileCheckCorner
+---
+
+# User Validators
+
+Qulf provides a built-in `UserValidator` to easily verify different states of a `User` profile. This allows for a fluent, chainable API when checking conditions before performing critical actions.
+
+## Basic Usage
+
+The `UserValidator` takes a user object (which can be `None`) and allows you to chain various validation rules. If any rule fails, it immediately raises a relevant exception (like `UserNotFoundError` or `UserAccountDeactivatedError`).
+
+```python title="app/services.py"
+from qulf.validators.user import UserValidator
+
+def handle_sensitive_action(user):
+    # This will raise an exception if any check fails!
+    validated_user = (
+        UserValidator(user)
+        .exists()
+        .active()
+        .verified()
+        .password_login_enabled()
+        .user
+    )
+    
+    print(f"User {validated_user.name} is fully valid and active!")
+```
+
+## Available Checks
+
+- `.exists()`: Ensures the user is not `None`.
+- `.active()`: Ensures the user account is not deactivated (`deleted_at` is None).
+- `.verified()`: Ensures the user has verified their email address.
+- `.password_login_enabled()`: Ensures the user has a password set up.
+
+## Custom Hidden Messages
+
+By default, the validator raises exceptions with specific messages (e.g., "User account has been deactivated."). For security reasons, you often want to obscure exact failure reasons to prevent information disclosure (like during a login flow).
+
+You can supply a `hidden_message` which will override the default error strings.
+
+```python
+UserValidator(user, hidden_message="Invalid credentials").exists().active()
+```
+
+## Custom Assertions
+
+You can also enforce custom logic using `.ensure()`.
+
+```python
+UserValidator(user).ensure(
+    predicate=lambda u: getattr(u, "role", None) == "admin",
+    error=ValueError,
+    message="User must be an admin."
+)
+```

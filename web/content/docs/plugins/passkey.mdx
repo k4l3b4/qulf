@@ -1,0 +1,131 @@
+---
+title: Passkey / WebAuthn
+description: Passwordless authentication via WebAuthn, FIDO2, Touch ID, Face ID, and hardware security keys.
+icon: Fingerprint
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Passkey / WebAuthn Plugin
+
+The `PasskeyPlugin` enables **passwordless, biometric, and hardware-key authentication** for your Python application using WebAuthn / FIDO2 standards.
+
+Users can register multiple authenticators per account (e.g., Touch ID on MacBook, Face ID on iPhone, Windows Hello on PC, or YubiKey hardware keys).
+
+```bash
+pip install "qulf[passkey]"
+```
+
+---
+
+## 1. Quick Configuration
+
+Pass keys require three domain options: `rp_id` (Relying Party ID), `rp_name` (App Display Name), and `origin` (full browser origin).
+
+```python title="app/auth.py"
+from qulf.core import Qulf, QulfConfig
+from qulf.plugins.passkey import PasskeyPlugin
+from app.db import db_adapter
+
+passkey_plugin = PasskeyPlugin(
+    rp_id="example.com",             # Effective domain (without protocol/port)
+    rp_name="My Awesome App",        # Human-readable app name for browser UI
+    origin="https://example.com",    # Exact browser origin (window.location.origin)
+    require_resident_key=False,      # Set True for discoverable/usernameless credentials
+    require_user_verification=False, # Set True to force biometric/PIN verification
+    challenge_ttl_seconds=60,        # Lifetime of short-lived challenge tokens
+)
+
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(secret_key="a-very-long-secret-key-at-least-32-chars!"),
+    plugins=[passkey_plugin],
+)
+```
+
+---
+
+## 2. API Endpoints
+
+`PasskeyPlugin` automatically exposes 6 WebAuthn endpoints under your `serve_qulf` router namespace:
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/passkey/register/begin` | Generates WebAuthn registration options & challenge token | **Yes** |
+| `POST` | `/passkey/register/complete` | Validates attestation & registers new passkey credential | **Yes** |
+| `POST` | `/passkey/login/begin` | Generates WebAuthn authentication options for given email | No |
+| `POST` | `/passkey/login/complete` | Validates assertion & issues authenticated session cookie | No |
+| `GET` | `/passkey/list` | Returns all passkeys registered for the current user | **Yes** |
+| `DELETE` | `/passkey/{credential_id}` | Removes a specific passkey credential from user account | **Yes** |
+
+---
+
+## 3. Registration Ceremony (Browser JS Example)
+
+Using a standard WebAuthn helper library like `@simplewebauthn/browser`:
+
+```javascript title="frontend/passkey.js"
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
+
+// 1. Register a new Passkey for logged-in user
+async function registerPasskey() {
+  // Step A: Begin registration
+  const resBegin = await fetch('/api/auth/passkey/register/begin', { method: 'POST' });
+  const { publicKey, challenge_token } = await resBegin.json();
+
+  // Step B: Trigger native browser prompt (Touch ID / Face ID / YubiKey)
+  const attestation = await startRegistration({ optionsJSON: publicKey });
+
+  // Step C: Complete registration
+  const resComplete = await fetch('/api/auth/passkey/register/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      challenge_token,
+      credential: attestation,
+      name: "MacBook Touch ID", // Optional friendly name
+    }),
+  });
+
+  const data = await resComplete.json();
+  console.log('Passkey Registered:', data);
+}
+
+// 2. Log in with Passkey
+async function loginWithPasskey(email) {
+  // Step A: Begin login
+  const resBegin = await fetch('/api/auth/passkey/login/begin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const { publicKey, challenge_token } = await resBegin.json();
+
+  // Step B: Trigger native browser authentication prompt
+  const assertion = await startAuthentication({ optionsJSON: publicKey });
+
+  // Step C: Complete login & receive session cookie
+  const resComplete = await fetch('/api/auth/passkey/login/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      challenge_token,
+      credential: assertion,
+    }),
+  });
+
+  const data = await resComplete.json();
+  console.log('Passkey Login Success:', data);
+}
+```
+
+---
+
+## 4. AST Database Sync & Migration
+
+Run `qulf sync` and `qulf migrate` to create the required `passkeys` table:
+
+```bash
+qulf sync
+qulf migrate --apply
+```

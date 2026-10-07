@@ -1,0 +1,57 @@
+---
+title: Core Concepts
+description: Understand the fundamental architecture of the Qulf authentication engine.
+icon: Cpu
+---
+
+# Core Concepts
+
+At the heart of Qulf lies a philosophy of decoupled, heavily-typed components. Instead of tightly integrating with a specific web framework (like Django) or ORM (like SQLAlchemy), Qulf splits authentication into three distinct layers.
+
+## 1. The Qulf Orchestrator (`core.py`)
+The `Qulf` class is the central nervous system. It orchestrates user sign-ups, session creation, password verification, and executes plugin lifecycle hooks.
+
+```python title="app/auth.py"
+from qulf.core import Qulf, QulfConfig
+# Assuming you have set up a DatabaseAdapter (see Database Adapters docs)
+from app.db import db_adapter 
+
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(
+        project_name="My App",
+        secret_key="your-32-char-secret-key-here!!!"
+    ),
+    plugins=[]
+)
+```
+
+## 2. The Database Adapter (`adapters/`)
+Qulf never runs SQL queries directly. Instead, it delegates all storage operations to an abstract `DatabaseAdapter`. This allows you to use SQLAlchemy, SQLModel, Motor (MongoDB), or even write your own.
+
+The adapter is responsible for methods like `create_user`, `get_user_by_email`, and `create_session`.
+
+## 3. The Framework Adapter (`frameworks/`)
+Just as Qulf doesn't know about databases, it doesn't know about HTTP requests directly. The framework adapter (e.g., `serve_qulf(auth)` for FastAPI) acts as a translator. It converts incoming native HTTP requests into normalized `QulfRequest` objects, and translates `QulfResponse` objects back into native HTTP responses (including setting secure cookies).
+
+## Data Models (Types)
+Everything in Qulf is strictly typed using Pydantic V2 schemas (found in `types.py`).
+
+*   **`User`**: A safe public representation of a user (excludes password hashes).
+*   **`Session`**: Represents an active authentication session.
+*   **`UserCreate`**: Validates user registration fields (including password confirmation matching).
+
+## Configuration
+Configuration is managed via `QulfConfig` which inherits from `pydantic-settings.BaseSettings`. It automatically loads settings from your `.env` file!
+
+```python
+from qulf.config import QulfConfig, SessionConfig
+
+# Loads QULF_SECRET_KEY, QULF_PROJECT_NAME, etc., from environment variables
+# You can also instantiate and pass nested models to customize behavior:
+config = QulfConfig(
+    project_name="My Startup",
+    secret_key="your-32-char-secret-key-here!!!",
+    sessions=SessionConfig(expires_in_days=30)
+)
+```

@@ -1,0 +1,4 @@
+{
+  "pages": ["index", "sqlalchemy", "sqlmodel", "motor", "custom"],
+  "icon": "Database"
+}

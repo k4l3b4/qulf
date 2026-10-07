@@ -1,0 +1,79 @@
+---
+title: SQLModel Adapter
+description: Integrating Qulf with SQLModel.
+---
+
+# SQLModel Adapter
+
+The SQLModel adapter connects Qulf to FastAPI's sister project, [SQLModel](https://sqlmodel.tiangolo.com/). Since SQLModel is built on top of SQLAlchemy, this adapter shares much of the same asynchronous architecture.
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Installation
+
+Ensure you install Qulf with the SQLModel and SQLAlchemy extras (as SQLModel depends on SQLAlchemy under the hood for async capabilities).
+
+<Tabs items={['uv', 'pip', 'poetry', 'pdm']}>
+  <Tab value="uv">
+    ```bash
+    uv add "qulf[sqlalchemy]" sqlmodel
+    ```
+  </Tab>
+  <Tab value="pip">
+    ```bash
+    pip install "qulf[sqlalchemy]" sqlmodel
+    ```
+  </Tab>
+  <Tab value="poetry">
+    ```bash
+    poetry add qulf -E sqlalchemy
+    poetry add sqlmodel
+    ```
+  </Tab>
+  <Tab value="pdm">
+    ```bash
+    pdm add "qulf[sqlalchemy]" sqlmodel
+    ```
+  </Tab>
+</Tabs>
+
+## Basic Setup
+
+Qulf provides default SQLModel classes for the `User`, `Session`, and `Account` tables out of the box.
+
+```python title="app/db.py"
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from qulf.adapters.sqlmodel import SQLModelAdapter, SQLModel
+
+# 1. Create your async engine (using standard SQLAlchemy async capabilities)
+engine = create_async_engine("sqlite+aiosqlite:///./app.db")
+session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+# 2. Instantiate the adapter
+db_adapter = SQLModelAdapter(session_maker)
+
+# (Optional) Initialize tables automatically
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+```
+
+## Using a Custom User Model
+
+You can use your own custom `SQLModel` subclass as the primary `users` table. Just make sure it inherits from Qulf's `UserMixin`!
+
+```python
+from sqlmodel import Field, SQLModel
+from qulf.adapters.sqlmodel import SQLModelAdapter, UserMixin
+
+class MyCustomUser(UserMixin, SQLModel, table=True):
+    __tablename__ = "users"
+    
+    id: int | None = Field(default=None, primary_key=True)
+    # Add your own app-specific fields!
+    is_premium: bool = Field(default=False)
+    tenant_id: str | None = Field(default=None)
+
+# Pass your custom model to the adapter
+db_adapter = SQLModelAdapter(session_maker, user_model=MyCustomUser)
+```

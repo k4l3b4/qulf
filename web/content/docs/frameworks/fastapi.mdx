@@ -1,0 +1,150 @@
+---
+title: FastAPI
+description: Integrating Qulf with FastAPI.
+---
+
+# FastAPI Integration
+
+Qulf provides first-class support for FastAPI, allowing you to instantly generate authentication endpoints and securely protect your routes using standard dependency injection.
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Installation
+
+Ensure you install Qulf with the fastapi extras:
+
+<Tabs items={['uv', 'pip', 'poetry', 'pdm']}>
+  <Tab value="uv">
+    ```bash
+    uv add "qulf[fastapi]"
+    ```
+  </Tab>
+  <Tab value="pip">
+    ```bash
+    pip install "qulf[fastapi]"
+    ```
+  </Tab>
+  <Tab value="poetry">
+    ```bash
+    poetry add qulf -E fastapi
+    ```
+  </Tab>
+  <Tab value="pdm">
+    ```bash
+    pdm add "qulf[fastapi]"
+    ```
+  </Tab>
+</Tabs>
+
+## Mounting the Routes
+
+Use the `serve_qulf` function to convert your Qulf engine into a native FastAPI `APIRouter`. This automatically registers endpoints like `/sign-in`, `/sign-up`, and any endpoints injected by your plugins!
+
+```python title="app/main.py"
+from fastapi import FastAPI
+from qulf.frameworks.fastapi import serve_qulf
+from app.auth import auth # Your Qulf core instance
+
+app = FastAPI()
+
+# Mount all auth routes under /api/auth
+app.include_router(serve_qulf(auth), prefix="/api/auth")
+```
+
+## Protecting Routes (Dependency Injection)
+
+To protect your API routes, you need a way to extract the current user from the session cookie or JWT.
+
+You can create a simple FastAPI dependency using Qulf's `get_session_from_cookies` method:
+
+```python title="app/routes.py"
+from fastapi import Request, HTTPException, Depends
+from qulf.types import User
+from app.auth import auth # Your Qulf core instance
+
+async def get_current_user(request: Request) -> User:
+    # Validate the session using Qulf
+    result = await auth.get_session_from_cookies(request.cookies)
+    
+    if not result:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    session, user = result
+    return user
+
+# Apply the dependency to your route!
+@app.get("/api/protected-dashboard")
+async def dashboard(current_user: User = Depends(get_current_user)):
+    return {
+        "message": f"Welcome back, {current_user.name}!",
+        "user_id": current_user.id
+    }
+```
+
+## Role-Based Access Control (RBAC)
+
+Qulf provides built-in FastAPI dependencies to easily protect routes based on roles or permissions.
+
+```python title="app/routes.py"
+from fastapi import APIRouter, Depends
+from qulf.frameworks.fastapi import RequiresRole, RequiresPermission
+from app.auth import auth
+
+router = APIRouter()
+
+# Require a specific role
+@router.post("/admin/settings")
+async def admin_settings(
+    user = Depends(RequiresRole(auth, "admin"))
+):
+    return {"message": "Welcome Admin"}
+
+# Require specific permissions
+@router.post("/articles")
+async def create_article(
+    user = Depends(RequiresPermission(auth, "write:articles"))
+):
+    return {"message": "Article created"}
+```
+
+### Multiple Roles & Match Modes
+
+You can also pass a list of roles or permissions and specify a `mode` (`"all"` or `"any"`). By default, `mode="all"` is used.
+
+```python
+# User must have BOTH 'admin' and 'editor' roles
+@router.post("/super-secret")
+async def secret_route(
+    user = Depends(RequiresRole(auth, ["admin", "editor"], mode="all"))
+):
+    pass
+
+# User can have EITHER 'editor' OR 'author' permission
+@router.post("/drafts")
+async def drafts_route(
+    user = Depends(RequiresPermission(auth, ["write:articles", "edit:drafts"], mode="any"))
+):
+    pass
+```
+
+### Performance & Caching
+
+You might wonder: *Does checking multiple roles or permissions hit the database multiple times?* 
+**No.** Qulf optimizes this automatically. 
+
+When you check a role or permission for the first time during a request, Qulf fetches the relationships from the database and caches them directly on the `User` object (`user.roles` and `user.permissions`). Subsequent RBAC checks in the same request life-cycle evaluate instantly in-memory without executing any additional SQL queries!
+
+## Available Endpoints
+
+When you mount `serve_qulf`, the following endpoints become available automatically:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/sign-up` | Register a new user |
+| `POST` | `/sign-in` | Sign in and receive a session cookie |
+| `POST` | `/sign-out` | Sign out and delete the session cookie |
+| `POST` | `/forgot-password` | Generate a password reset link |
+| `POST` | `/reset-password` | Reset the user's password using the token |
+| `POST` | `/verify-email` | Verify the user's email address |
+| `POST` | `/change-password` | Change an authenticated user's password |
+| `DELETE` | `/account` | Delete the authenticated user's account |

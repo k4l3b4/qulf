@@ -1,0 +1,48 @@
+---
+title: Custom Adapters
+description: Build a custom database adapter to use any ORM with Qulf.
+---
+
+# Custom Database Adapters
+
+If your application uses an ORM or database that Qulf doesn't support out-of-the-box (like Prisma, Tortoise ORM, or pure AsyncPG), you can easily write a custom adapter!
+
+## Implementing `DatabaseAdapter`
+
+All you have to do is subclass the `DatabaseAdapter` abstract base class and implement a few asynchronous methods.
+
+```python title="app/adapters/mongo.py"
+from qulf.adapters.base import DatabaseAdapter
+from qulf.types import User, UserCreate, Session
+
+class MyMongoAdapter(DatabaseAdapter):
+    def __init__(self, mongo_client):
+        self.db = mongo_client
+        
+    async def get_user_by_email(self, email: str) -> User | None:
+        doc = await self.db.users.find_one({"email": email})
+        if not doc:
+            return None
+        return User(**doc)
+        
+    async def create_user(self, user_data: UserCreate, hashed_password: str) -> User:
+        doc = user_data.model_dump()
+        doc["hashed_password"] = hashed_password
+        await self.db.users.insert_one(doc)
+        return User(**doc)
+        
+    # ... implement session and account methods similarly
+```
+
+## Abstract Methods Required
+
+You must implement the following methods to fulfill the contract:
+
+*   `get_user_by_email(email)`: Returns a user (including hashed password).
+*   `get_user_by_id(user_id)`: Returns a public user profile.
+*   `create_user(user_data, hashed_password)`: Persists a new user.
+*   `create_session(...)`: Stores a new session token.
+*   `get_session(token)`: Retrieves an active session.
+*   `delete_session(token)`: Invalidates a session token.
+
+*Tip: If you use JWT sessions exclusively, you can leave the session storage methods empty or raise `NotImplementedError`!*

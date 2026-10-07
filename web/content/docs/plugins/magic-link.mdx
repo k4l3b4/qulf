@@ -1,0 +1,85 @@
+---
+title: Magic Links
+description: Allow users to sign in without passwords via email magic links.
+---
+
+# Magic Link Plugin
+
+The Magic Link plugin enables passwordless authentication. Users submit their email, receive a secure, short-lived token via email, and click it to instantly log in.
+
+## Configuration
+
+Import the `MagicLinkPlugin` and add it to your Qulf configuration. The plugin uses the `secret_key` defined in your `QulfConfig` to cryptographically sign the tokens.
+
+```python title="app/auth.py"
+from qulf.core import Qulf, QulfConfig
+from qulf.plugins.magic_link import MagicLinkPlugin
+from app.db import db_adapter # Your database adapter
+
+async def my_email_sender(email: str, token: str):
+    # Use Resend, Brevo, SendGrid, etc. to dispatch the email
+    link = f"https://my-app.com/verify?token={token}"
+    print(f"Sending magic link to {email}: {link}")
+
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(secret_key="your-32-char-secret-key-here!!!"),
+    plugins=[
+        MagicLinkPlugin(
+            send_email_func=my_email_sender,
+            expires_in_minutes=15
+        )
+    ]
+)
+```
+
+## Usage Examples
+
+Here is how you use the endpoints in your frontend application.
+
+### 1. Send the Magic Link
+Ask the user for their email, then call the send endpoint.
+
+```javascript title="frontend/login.js"
+// Send a magic link to the user's email
+// (Assuming your auth router is mounted at /api/auth)
+await fetch('/api/auth/magic-link/send', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: 'user@example.com' })
+});
+```
+
+### 2. Verify the Token
+When the user clicks the link in their email, grab the token from the URL and verify it.
+
+```javascript title="frontend/verify.js"
+// Extract token from the URL, e.g., ?token=...
+const urlParams = new URLSearchParams(window.location.search);
+const token = urlParams.get('token');
+
+// Verify the token to sign the user in
+// (Assuming your auth router is mounted at /api/auth)
+const response = await fetch('/api/auth/magic-link/verify', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token })
+});
+
+if (response.ok) {
+  const data = await response.json();
+  console.log("Logged in successfully!", data.user);
+}
+```
+
+## How it works
+
+When the plugin is mounted, it injects these relative routes:
+
+**`POST /magic-link/send`**
+- Body: `{"email": "user@example.com"}`
+- Action: Generates a secure token and calls your `send_email_func`.
+
+**`POST /magic-link/verify`**
+- Body: `{"token": "the_token_from_email"}`
+- Action: Verifies the token. If valid, logs the user in and returns session details.

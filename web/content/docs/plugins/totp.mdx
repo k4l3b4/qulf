@@ -1,0 +1,90 @@
+---
+title: TOTP (2FA)
+description: Secure accounts with Time-based One-Time Passwords.
+---
+
+# TOTP Plugin
+
+The TOTP plugin provides robust Two-Factor Authentication (2FA) using authenticator apps like Google Authenticator or Authy.
+
+## Configuration
+
+Import the `TOTPPlugin` and add it to your plugins list. 
+
+```python title="app/auth.py"
+from qulf.core import Qulf, QulfConfig
+from qulf.plugins.totp import TOTPPlugin
+from app.db import db_adapter # Your database adapter
+
+auth = Qulf(
+    db=db_adapter,
+    # The project_name in config is used as the issuer name in authenticator apps
+    config=QulfConfig(
+        secret_key="your-32-char-secret-key-here!!!",
+        project_name="My Cool Startup" 
+    ),
+    plugins=[
+        TOTPPlugin()
+    ]
+)
+```
+
+## Usage Examples
+
+Here is how you build the 2FA flow in your frontend.
+
+### 1. Setup 2FA (Logged In User)
+Call the setup endpoint to get a secret string and a QR code URI. Display the QR code to the user to scan with their authenticator app.
+
+```javascript title="frontend/setup-2fa.js"
+const response = await fetch('/api/auth/2fa/setup', {
+  method: 'POST'
+});
+const { uri } = await response.json();
+
+// Render the `uri` as a QR code using a library like `qrcode`
+```
+
+### 2. Enable 2FA (Logged In User)
+After scanning the QR code, the user enters a 6-digit code to confirm.
+
+```javascript title="frontend/enable-2fa.js"
+await fetch('/api/auth/2fa/enable', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ code: '123456' })
+});
+// If successful, 2FA is now required on their next login!
+```
+
+### 3. Log In with 2FA
+When a user with 2FA enabled tries to log in, the server will return a temporary token instead of logging them in. Use this token and their 6-digit code to complete the login.
+
+```javascript title="frontend/login-2fa.js"
+// 1. User tries to log in
+const loginRes = await fetch('/api/auth/sign-in', { /* ... */ });
+
+if (loginRes.status === 403) {
+  // 2. Server says 2FA is required! Get the temporary token.
+  const { temp_token } = await loginRes.json();
+  
+  // 3. Ask user for their 6-digit code, then verify:
+  const verifyRes = await fetch('/api/auth/2fa/verify_login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ temp_token, code: '123456' })
+  });
+
+  if (verifyRes.ok) {
+    console.log("Logged in successfully!");
+  }
+}
+```
+
+## API Workflow
+
+The framework adapter exposes the following relative endpoints (which will be nested under wherever you mounted the router, e.g. `/api/auth`):
+
+1.  **Generate a Secret**: `POST /2fa/setup`. Requires an active session. Returns a QR code provisioning URI.
+2.  **Verify & Enable**: `POST /2fa/enable`. Requires an active session. Verifies the 6-digit code.
+3.  **Sign In**: If 2FA is enabled, standard login returns a temporary token. The client calls `POST /2fa/verify_login` with the token and the 6-digit code to complete the login.

@@ -1,0 +1,103 @@
+---
+title: Rate Limiting
+description: Protect your authentication endpoints from brute-force attacks.
+icon: Shield
+---
+
+# Rate Limiting
+
+Authentication endpoints are high-value targets for brute-force and credential stuffing attacks. Qulf includes a built-in rate-limiting system via the `RateLimitPlugin`.
+
+## Configuration
+
+You can enable rate limiting by mounting the `RateLimitPlugin` when instantiating the core engine. You need to configure a rate limiting backend (algorithm and storage) and pass it to the plugin.
+
+```python title="app/auth.py"
+from qulf.core import Qulf, QulfConfig
+from qulf.plugins.rate_limit import RateLimitPlugin
+from qulf.rate_limit import (
+    InMemoryFixedWindow,
+    FixedWindowConfig
+)
+from app.db import db_adapter # Your database adapter
+
+# Set up an in-memory fixed window limiter
+limiter = InMemoryFixedWindow(
+    FixedWindowConfig(
+        max_requests=5,
+        window_seconds=60
+    )
+)
+
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(project_name="My Secure App"),
+    plugins=[
+        RateLimitPlugin(limiter=limiter, protect_sign_in=True)
+    ]
+)
+```
+
+## How It Works
+
+When `protect_sign_in=True`, Qulf's `RateLimitPlugin` automatically tracks requests to the `/sign-in` endpoint. It creates composite keys based on the incoming `ip_address` and `email` to effectively mitigate credential stuffing.
+
+When a client exceeds the `max_requests`, Qulf immediately blocks further attempts and raises a `RateLimitExceededError`, which the framework adapter translates into an HTTP `429 Too Many Requests` response.
+
+## Algorithms & Storage
+
+Qulf provides three standard rate limiting algorithms. You can run them in-memory (for single-process apps) or backed by Redis (for distributed apps).
+
+### 1. Fixed Window
+Divides time into fixed discrete windows (e.g., 00:00-00:01). Fast and simple, but suffers from "bursting" at the edges of windows.
+
+*   `InMemoryFixedWindow(FixedWindowConfig(...))`
+*   `RedisFixedWindow(FixedWindowConfig(...), redis_client)`
+
+### 2. Sliding Window Log
+Tracks exact timestamps of requests. Highly accurate, but uses more memory since it stores a log of timestamps.
+
+*   `InMemorySlidingWindowLog(SlidingWindowConfig(...))`
+*   `RedisSlidingWindowLog(SlidingWindowConfig(...), redis_client)`
+
+### 3. Token Bucket
+Tokens are added to a bucket at a constant rate. Requests consume tokens. Allows for initial bursts while enforcing a steady long-term rate.
+
+*   `InMemoryTokenBucket(TokenBucketConfig(...))`
+*   `RedisTokenBucket(TokenBucketConfig(...), redis_client)`
+
+### Using Redis for Distributed Apps
+
+If you are running your application across multiple workers or servers (e.g., using Gunicorn with 4 workers), an in-memory rate limiter is not sufficient because each worker tracks its own limits independently.
+
+To share rate limits globally, use a Redis-backed limiter:
+
+```python title="app/auth.py"
+import redis.asyncio as redis
+from qulf.plugins.rate_limit import RateLimitPlugin
+from qulf.rate_limit import RedisSlidingWindowLog, SlidingWindowConfig
+
+# Setup an async Redis connection
+redis_client = redis.from_url("redis://localhost:6379/0")
+
+# Setup the Redis-backed limiter
+limiter = RedisSlidingWindowLog(
+    config=SlidingWindowConfig(
+        max_requests=10,
+        window_seconds=60
+    ),
+    client=redis_client
+)
+
+auth = Qulf(
+    db=db_adapter,
+    config=QulfConfig(),
+    plugins=[
+        RateLimitPlugin(limiter=limiter)
+    ]
+)
+```
+
+## Custom Rate Limiting
+
+The plugin exposes an `enforce(action, identifier, tokens=1)` method. You can retrieve the plugin instance and call this inside any of your custom framework routes to rate limit other critical endpoints (like password resets or API calls).

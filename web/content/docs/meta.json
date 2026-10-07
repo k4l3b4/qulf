@@ -1,0 +1,18 @@
+{
+  "pages": [
+    "index",
+    "getting-started",
+    "cli",
+    "core-concepts",
+    "security",
+    "types",
+    "sessions",
+    "rate-limiting",
+    "databases",
+    "frameworks",
+    "plugins",
+    "validators",
+    "api-reference",
+    "exceptions"
+  ]
+}

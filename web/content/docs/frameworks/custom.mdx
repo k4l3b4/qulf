@@ -1,0 +1,50 @@
+---
+title: Custom Frameworks
+description: Implement your own framework adapter.
+---
+
+# Custom Framework Adapters
+
+If you're using a micro-framework or a proprietary internal server, you can write your own framework adapter. It's incredibly straightforward because Qulf's routing logic is completely stateless and pure.
+
+## Implementing an Adapter
+
+To build an adapter, you need to write a function that:
+1. Iterates over all `QulfRoute` objects provided by the plugins and core engine.
+2. Registers them into your framework's router.
+3. Maps the framework's native `Request` object into a `QulfRequest`.
+4. Maps the `QulfResponse` back to the framework's native `Response`.
+
+Here is a simplified example of how you might build an adapter for `Flask`:
+
+```python title="app/frameworks/flask.py"
+from flask import request, make_response
+from qulf.routing import QulfRequest
+
+def serve_qulf_flask(app, auth):
+    # Register the standard sign-in route
+    @app.route("/api/auth/sign-in", methods=["POST"])
+    def sign_in():
+        payload = request.get_json()
+        ip = request.remote_addr
+        
+        # Call Qulf core!
+        session = auth.sign_in(
+            payload["email"], 
+            payload["password"], 
+            ip, 
+            request.user_agent.string
+        )
+        
+        # Translate Qulf result back to Flask response
+        resp = make_response({"message": "Signed in successfully"})
+        resp.set_cookie(
+            auth.config.cookies.name,
+            session.token,
+            httponly=True
+        )
+        return resp
+        
+    # In a real adapter, you would also iterate over `auth.plugins.values()` 
+    # to register dynamically generated routes!
+```

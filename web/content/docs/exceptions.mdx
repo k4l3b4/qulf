@@ -1,0 +1,84 @@
+---
+title: Exceptions
+description: The complete Qulf exception hierarchy.
+icon: TriangleAlert
+---
+
+# Exceptions
+
+Qulf uses a strict exception hierarchy. All exceptions inherit from the base `QulfException`. This allows you to easily catch any Qulf-related error in a single block, or drill down to handle specific scenarios.
+
+```python
+from qulf.exceptions import QulfException, AuthenticationError
+
+try:
+    await auth.sign_in(email, password)
+except AuthenticationError as e:
+    # Catch any authentication-related failure
+    print(f"Login failed: {e}")
+except QulfException as e:
+    # Catch any other Qulf error
+    print(f"Internal Qulf error: {e}")
+```
+
+---
+
+## Core Hierarchy
+
+### `QulfException`
+The base exception class for all errors raised by the Qulf engine, plugins, or database adapters.
+
+### `ConfigurationError`
+Raised during startup when a plugin or the core engine is misconfigured (e.g., missing a required environment variable, invalid config types). Helps developers fail fast rather than encountering runtime bugs in production.
+
+### `UserAlreadyExistsError`
+Raised during `sign_up` if a user attempts to register with an email address or username that is already taken.
+
+### `Requires2FAError`
+Raised during `sign_in` when the credentials are valid, but the user has Two-Factor Authentication (TOTP or Passkey) enabled. Contains a `temp_token` attribute needed to complete the second factor verification.
+
+### `RateLimitExceededError`
+Raised by the `RateLimitPlugin` when a user or IP address exceeds their allowed request quota. Contains a `retry_after` attribute (seconds) indicating when they can try again.
+
+### `ModelResolutionError`
+Raised when a requested table or entity cannot be resolved to a specific ORM class by the `DatabaseAdapter`.
+
+---
+
+## Authentication Errors
+
+All of the following exceptions inherit from `AuthenticationError` (which itself inherits from `QulfException`).
+
+### `AuthenticationError`
+The base class for all authentication-related failures.
+
+### `UserNotFoundError`
+Raised when attempting to retrieve, update, or act upon a user that does not exist in the database.
+
+### `InvalidCredentialsError`
+Raised during `sign_in` when the provided password does not match the stored hash for the user.
+
+### `UserAccountDeactivatedError`
+Raised during `sign_in` or validation if the user account has been soft-deleted (`deleted_at` is set) or administratively disabled.
+
+### `UserEmailNotVerifiedError`
+Raised if the configuration requires email verification before login (`require_for_sign_in=True`), and the user attempts to sign in without having verified their email.
+
+### `UserPasswordLoginDisabledError`
+Raised during `sign_in` if the account exists but has no password set (e.g., a user who registered exclusively via OAuth or Passkey).
+
+### `InvalidTokenError`
+Raised when parsing a Magic Link, Session token, or OAuth token that is fundamentally malformed or fails cryptographic signature validation.
+
+### `SessionExpiredError`
+Raised when attempting to use a Session token or Magic Link that is structurally valid but past its expiration date.
+
+### `PasskeyVerificationError`
+Raised when a WebAuthn signature or challenge verification fails during passkey registration or authentication.
+
+---
+
+## Authorization Errors
+
+### `AuthorizationError`
+Raised by RBAC methods (like `require_role` or `require_permission`) when a user lacks the necessary privileges to access a resource.

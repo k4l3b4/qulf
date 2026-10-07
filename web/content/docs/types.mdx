@@ -1,0 +1,261 @@
+---
+title: Fully Typed (Pydantic)
+description: Best-in-class developer experience with Pydantic V2 and static typing.
+icon: Type
+---
+
+# Fully Typed
+
+Python's typing ecosystem has matured significantly, and Qulf fully embraces it. The entire library is built with strict `mypy` configurations and relies entirely on **Pydantic V2** for data validation and modeling. All core types live in `qulf.types`.
+
+---
+
+## Base Model
+
+### `CoreModel`
+
+All Qulf database entities inherit from `CoreModel`. It extends `pydantic.BaseModel` with `extra="allow"` so custom ORM columns injected by plugins are automatically carried through.
+
+```python
+class CoreModel(BaseModel):
+    id: int | str
+    created_at: datetime
+    updated_at: datetime | None = None
+```
+
+---
+
+## User Models
+
+Qulf defines several permutations of the User object to guarantee security by design.
+
+### `User`
+
+The **public-facing** model returned by all API methods. The `hashed_password` field physically does not exist on this model — it is impossible to accidentally leak it.
+
+```python
+from qulf.types import User
+
+class User(CoreModel):
+    name: str
+    email: EmailStr
+    username: str | None
+    email_verified_at: datetime | None = None
+    last_login: datetime | None = None
+    deleted_at: datetime | None = None
+    roles: list[Role] | None = None
+    permissions: list[Permission] | None = None
+```
+
+### `UserCreate`
+
+Validation schema used during sign-up. Automatically validates that `password` and `password_confirmation` match via a Pydantic `model_validator`.
+
+```python
+from qulf.types import UserCreate
+
+class UserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    username: str
+    password: str
+    password_confirmation: str
+    # Raises ValueError if password != password_confirmation
+```
+
+### `UserUpdate`
+
+Used when updating an existing user's profile fields.
+
+```python
+from qulf.types import UserUpdate
+
+class UserUpdate(BaseModel):
+    id: int | str
+    name: str
+    email: EmailStr
+    email_verified_at: datetime | None = None
+    username: str
+```
+
+### `UserWithPassword`
+
+An **internal-only** model used inside the crypto and storage layer. Contains the raw Argon2 hash. Never returned to callers outside the adapter.
+
+```python
+class UserWithPassword(User):
+    hashed_password: str
+```
+
+---
+
+## Session Model
+
+### `Session`
+
+Represents an active user session token, including optional device tracking metadata.
+
+```python
+from qulf.types import Session
+
+class Session(CoreModel):
+    user_id: int | str
+    expires_at: datetime
+    token: str
+    ip_address: str | None = None
+    user_agent: str | None = None
+    deleted_at: datetime | None = None
+```
+
+When you call `auth.validate_session(token)`, you get back a `tuple[Session, User]`.
+
+---
+
+## OAuth Account Models
+
+These models represent linked OAuth provider accounts. A single user can have multiple linked accounts (e.g., GitHub + Google).
+
+### `AccountCreate`
+
+Payload for linking a new OAuth account to an existing user.
+
+```python
+from qulf.types import AccountCreate
+
+class AccountCreate(BaseModel):
+    user_id: int | str
+    account_id: str       # Provider's unique user ID
+    provider_id: str      # e.g. "github", "google"
+    access_token: str | None = None
+    refresh_token: str | None = None
+    expires_at: datetime | None = None
+    scope: str | None = None
+    id_token: str | None = None
+```
+
+### `Account`
+
+The full persisted representation of a linked OAuth account.
+
+```python
+from qulf.types import Account
+
+class Account(CoreModel, AccountCreate):
+    deleted_at: datetime | None = None
+```
+
+---
+
+## RBAC Models
+
+### `Role` & `Permission`
+
+Used by the RBAC system. Roles are assigned to users; permissions are assigned to roles.
+
+```python
+from qulf.types import Role, Permission
+
+class Permission(CoreModel):
+    name: str
+    description: str | None = None
+
+class Role(CoreModel):
+    name: str
+    description: str | None = None
+```
+
+The `User` model carries pre-loaded `roles` and `permissions` lists after RBAC checks, so subsequent calls in the same request lifecycle hit no extra database queries.
+
+---
+
+## Passkey Models
+
+These models represent WebAuthn/Passkey credentials stored per user device.
+
+### `PasskeyCredentialCreate`
+
+Payload for registering a new passkey credential.
+
+```python
+from qulf.types import PasskeyCredentialCreate
+
+class PasskeyCredentialCreate(BaseModel):
+    user_id: int | str
+    credential_id: str   # hex-encoded unique credential ID
+    public_key: str      # hex-encoded COSE public key bytes
+    sign_count: int
+    name: str = "Passkey"  # human-readable label (e.g. "Touch ID")
+```
+
+### `PasskeyCredential`
+
+The persisted credential record. A user can have multiple credentials — one per authenticator device (Touch ID, Face ID, Windows Hello, a hardware security key, etc.).
+
+```python
+from qulf.types import PasskeyCredential
+
+class PasskeyCredential(CoreModel):
+    user_id: int | str
+    credential_id: str   # hex-encoded; unique across all users
+    public_key: str      # hex-encoded COSE public key bytes
+    sign_count: int      # monotonic replay-protection counter
+    name: str = "Passkey"
+```
+
+---
+
+## Internal Enums
+
+These enums are used by the CLI and adapters internally but are exported from `qulf.types`.
+
+### `SupportedORM`
+
+```python
+from qulf.types import SupportedORM
+
+class SupportedORM(str, Enum):
+    django = "django"
+    sqlalchemy = "sqlalchemy"
+    sqlmodel = "sqlmodel"
+    mongo = "mongo"
+```
+
+### `ConfigLocation`
+
+Identifies whether the Qulf config lives in `pyproject.toml` or a standalone `.qulf.toml`.
+
+```python
+from qulf.types import ConfigLocation
+
+class ConfigLocation(str, Enum):
+    pyproject = "pyproject.toml"
+    standalone = ".qulf.toml"
+```
+
+---
+
+## Configuration Validation
+
+Your configuration is validated using `pydantic-settings`. If you pass invalid types or forget a critical environment variable, Qulf will raise a clear `ValidationError` on startup rather than failing silently later.
+
+```python title="app/config.py"
+from qulf.core import QulfConfig
+
+# Will fail immediately if QULF_SECRET_KEY is not set in the environment!
+config = QulfConfig()
+```
+
+## Plugin Typings
+
+Because Qulf's core engine (`auth`) is passed to plugins, developing a custom plugin provides autocomplete for all core database methods. You can seamlessly type-hint your plugin hooks:
+
+```python title="app/plugins/custom.py"
+from qulf.plugins.base import QulfPlugin
+from qulf.types import UserCreate
+
+class MyPlugin(QulfPlugin):
+    async def before_user_create(self, user_data: UserCreate) -> UserCreate:
+        # Pydantic ensures user_data is always a valid object
+        user_data.email = user_data.email.lower()
+        return user_data
+```
