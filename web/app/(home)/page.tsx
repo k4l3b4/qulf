@@ -23,7 +23,7 @@ import {
   DjangoIcon,
   FastAPIIcon,
   FlaskIcon,
-  LightStarIcon,
+  LiteStarIcon,
   MongoDBIcon,
   PrismaIcon,
   SQLAlchemyIcon,
@@ -425,7 +425,7 @@ export default function HomePage() {
     },
     {
       name: "Litestar",
-      icon: <LightStarIcon className="size-5" />,
+      icon: <LiteStarIcon className="size-5" />,
       href: "/docs/frameworks/litestar",
     },
     {

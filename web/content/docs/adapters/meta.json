@@ -1,4 +1,11 @@
 {
-  "pages": ["index", "sqlalchemy", "sqlmodel", "motor", "custom"],
+  "pages": [
+    "index",
+    "sqlalchemy",
+    "sqlmodel",
+    "django",
+    "motor",
+    "custom"
+  ],
   "icon": "Database"
 }

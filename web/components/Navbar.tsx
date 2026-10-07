@@ -4,18 +4,7 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { config } from "@/lib/shared";
-import { QulfLogoIcon } from "./icons";
-
-function QulfWordmark() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex items-center justify-center rounded-md select-none">
-        <QulfLogoIcon width={22} height={22} />
-      </div>
-      <span className="text-xl font-bold tracking-tight text-white">QULF</span>
-    </div>
-  );
-}
+import QulfWordMark from "./ui/qulf-wordmark";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -31,7 +20,7 @@ export function Navbar() {
           className="flex items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
           aria-label="Qulf home"
         >
-          <QulfWordmark />
+          <QulfWordMark />
         </Link>
 
         {/* Desktop Links */}
