@@ -7,14 +7,12 @@ import {
   ChevronRight,
   Copy,
   Database,
-  Fingerprint,
+  ExternalLink,
   KeySquare,
   Lock,
   Plug,
   Shield,
-  Terminal,
   Type,
-  Wrench,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
@@ -33,7 +31,7 @@ import {
 import { QulfArchDiagram } from "@/components/QulfArchDiagram";
 import { config } from "@/lib/shared";
 
-/* ── Grid decoration ──────────────────────────────────────── */
+// Grid decoration
 function Cross({ className }: { className?: string }) {
   return (
     <svg
@@ -64,7 +62,7 @@ function GridCrosses({ className }: { className?: string }) {
   );
 }
 
-/** Red pill label above a heading */
+// Red pill label above a heading
 function SectionKicker({ children }: { children: React.ReactNode }) {
   return (
     <p className="flex items-center gap-2 text-sm font-medium text-red-500">
@@ -74,15 +72,8 @@ function SectionKicker({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── Animated terminal typing ─────────────────────────────── */
+// Animated terminal typing
 const CODE_LINES = [
-  // { text: "from fastapi import FastAPI", indent: 0, type: "import" },
-  // { text: "from qulf import Qulf, QulfConfig", indent: 0, type: "import" },
-  // {
-  //   text: "from qulf.adapters.sqlalchemy import SQLAlchemyAdapter",
-  //   indent: 0,
-  //   type: "import",
-  // },
   {
     text: "from qulf.plugins.oauth import OAuthPlugin",
     indent: 0,
@@ -140,7 +131,7 @@ function TerminalCode() {
     if (line.type === "blank") return <div key={i} className="h-4" />;
 
     if (line.type === "import") {
-      const [from, ...rest] = line.text.split(" ");
+      const [_from, ...rest] = line.text.split(" ");
       const joined = rest.join(" ");
       const importIdx = joined.indexOf("import");
       const mod = joined.slice(0, importIdx).trim();
@@ -193,7 +184,7 @@ function TerminalCode() {
         <span className="size-3 rounded-full bg-[#28c840]" />
         <span className="ml-3 text-xs text-neutral-600 font-mono">main.py</span>
       </div>
-      <div className="px-5 py-4 min-h-[280px]">
+      <div className="px-5 py-4 min-h-70">
         {CODE_LINES.map((line, i) => renderLine(line, i, i < visibleLines))}
         {visibleLines >= CODE_LINES.length && (
           <div className="mt-2 flex items-center gap-2 text-xs text-neutral-700">
@@ -206,7 +197,7 @@ function TerminalCode() {
   );
 }
 
-/* ── Stats ticker ─────────────────────────────────────────── */
+/*  Stats ticker  */
 const STATS = [
   { value: "< 5 min", label: "to integrate" },
   { value: "MIT", label: "license" },
@@ -231,7 +222,7 @@ function StatsTicker() {
   );
 }
 
-/* ── Interactive Pip Install Showcase ────────────────────── */
+/*  Interactive Pip Install Showcase  */
 const INSTALL_PRESETS = [
   {
     id: "minimal",
@@ -301,6 +292,7 @@ function PipInstallShowcase() {
           const isActive = activePreset.id === preset.id;
           return (
             <button
+              type="button"
               key={preset.id}
               onClick={() => setActivePreset(preset)}
               className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
@@ -320,10 +312,13 @@ function PipInstallShowcase() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 font-mono text-sm sm:text-base text-neutral-200 overflow-x-auto py-1">
             <span className="text-red-500 font-bold select-none">$</span>
-            <span className="text-white font-medium">{activePreset.command}</span>
+            <span className="text-white font-medium">
+              {activePreset.command}
+            </span>
           </div>
 
           <button
+            type="button"
             onClick={() => handleCopy(activePreset.command)}
             className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-900 text-xs font-semibold text-neutral-300 transition-all duration-200 hover:border-neutral-500 hover:text-white active:scale-95 cursor-pointer"
             title="Copy command"
@@ -344,7 +339,9 @@ function PipInstallShowcase() {
 
         {/* Preset Description & Tags */}
         <div className="mt-4 pt-4 border-t border-neutral-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-neutral-400">
-          <p className="max-w-2xl leading-relaxed">{activePreset.description}</p>
+          <p className="max-w-2xl leading-relaxed">
+            {activePreset.description}
+          </p>
           <div className="flex flex-wrap gap-1.5 shrink-0">
             {activePreset.tags.map((tag) => (
               <span
@@ -361,9 +358,6 @@ function PipInstallShowcase() {
   );
 }
 
-/* ══════════════════════════════════════════════════════
-   PAGE
-══════════════════════════════════════════════════════ */
 export default function HomePage() {
   /* Capability index */
   const capabilityIndex = [
@@ -513,7 +507,7 @@ export default function HomePage() {
   return (
     <>
       <main className="overflow-clip bg-neutral-950 text-white">
-        {/* ══ 1. HERO ═══════════════════════════════════════════ */}
+        {/*  1. HERO  */}
         <section className="border-b border-neutral-800" aria-label="Hero">
           <div className="relative mx-auto max-w-7xl border-x border-neutral-800">
             <GridCrosses />
@@ -612,7 +606,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ══ 2. PRODUCT / FEATURE BENTO ════════════════════════ */}
+        {/*  2. PRODUCT / FEATURE BENTO  */}
         <section
           className="border-b border-neutral-800"
           aria-labelledby="product-title"
@@ -711,9 +705,7 @@ export default function HomePage() {
           </div>
         </section>
 
-
-
-        {/* ══ 3. CAPABILITY INDEX ═══════════════════════════════ */}
+        {/*  3. CAPABILITY INDEX  */}
         <section
           className="border-b border-neutral-800"
           aria-labelledby="capability-title"
@@ -723,12 +715,16 @@ export default function HomePage() {
             <div className="flex flex-col gap-3 border-b border-neutral-800 px-5 py-10 sm:px-8 md:flex-row md:items-baseline md:justify-between md:gap-8 lg:px-10">
               <div>
                 <SectionKicker>Modular Ecosystem</SectionKicker>
-                <h2 id="capability-title" className="mt-2 font-display-subheading">
+                <h2
+                  id="capability-title"
+                  className="mt-2 font-display-subheading"
+                >
                   Everything in one pip install.
                 </h2>
               </div>
               <p className="max-w-md text-sm leading-6 text-neutral-400">
-                Sessions, WebAuthn Passkeys, OAuth2, 2FA, Magic Links, and RBAC — shipped together, used individually.
+                Sessions, WebAuthn Passkeys, OAuth2, 2FA, Magic Links, and RBAC
+                — shipped together, used individually.
               </p>
             </div>
 
@@ -776,7 +772,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ══ 4. INTEGRATIONS ═══════════════════════════════════ */}
+        {/*  4. INTEGRATIONS  */}
         <section
           className="border-b border-neutral-800"
           aria-labelledby="integrations-title"
@@ -857,7 +853,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ══ 5. FAQ ════════════════════════════════════════════ */}
+        {/*  5. FAQ  */}
         <section
           className="border-b border-neutral-800"
           aria-labelledby="faq-title"
@@ -894,7 +890,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ══ 6. ARCHITECTURE DIAGRAM ═══════════════════════════ */}
+        {/*  6. ARCHITECTURE DIAGRAM  */}
         <section
           className="border-b border-neutral-800"
           aria-labelledby="arch-title"
@@ -969,7 +965,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ══ 7. CTA ════════════════════════════════════════════ */}
+        {/*  7. CTA  */}
         <section
           className="group relative overflow-hidden border-b border-red-900 bg-red-950"
           aria-label="Call to action"
@@ -990,7 +986,7 @@ export default function HomePage() {
             aria-hidden
             className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-150 h-100 rounded-full"
           />
-          {/* <div className="relative mx-auto grid max-w-7xl border-x border-white/10 lg:grid-cols-12">
+          <div className="relative mx-auto grid max-w-7xl border-x border-white/10 lg:grid-cols-12">
             <GridCrosses className="text-white/20" />
 
             <div className="relative z-10 border-b border-white/10 px-5 py-16 sm:px-8 md:py-24 lg:col-span-8 lg:border-b-0 lg:border-r lg:px-10">
@@ -1032,17 +1028,13 @@ export default function HomePage() {
                 {config.version} — MIT license
               </p>
             </div>
-          </div> */}
+          </div>
         </section>
       </main>
       <Footer />
     </>
   );
 }
-
-/* ══════════════════════════════════════════════════════
-   LOCAL COMPONENTS
-══════════════════════════════════════════════════════ */
 
 function FeatureCard({
   icon,
@@ -1076,7 +1068,7 @@ function MiniList({ items, mono }: { items: string[]; mono?: boolean }) {
     <div className="overflow-hidden rounded-lg border border-neutral-800 bg-black">
       {items.map((item, i) => (
         <div
-          key={i}
+          key={item}
           className="flex items-center justify-between px-4 py-2.5 text-xs"
           style={{
             borderBottom:
