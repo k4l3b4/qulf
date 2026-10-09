@@ -3,9 +3,6 @@
 import {
   ArrowRight,
   Blocks,
-  Check,
-  ChevronRight,
-  Copy,
   Database,
   ExternalLink,
   KeySquare,
@@ -16,9 +13,14 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import type React from "react";
 import { useEffect, useState } from "react";
 import { Footer } from "@/components/Footer";
+import { GridCrosses, SectionKicker } from "@/components/home-ui/decoration";
+import { FAQAccordion } from "@/components/home-ui/faq-accordion";
+import { FeatureCard } from "@/components/home-ui/feature-card";
+import { MiniList } from "@/components/home-ui/mini-list";
+import { PipInstallShowcase } from "@/components/home-ui/pip-install-showcase";
+import StatsTicker from "@/components/home-ui/stats-ticker";
 import {
   DjangoIcon,
   FastAPIIcon,
@@ -31,48 +33,6 @@ import {
 import { QulfArchDiagram } from "@/components/QulfArchDiagram";
 import { config } from "@/lib/shared";
 
-// Grid decoration
-function Cross({ className }: { className?: string }) {
-  return (
-    <svg
-      width="11"
-      height="11"
-      viewBox="0 0 11 11"
-      fill="none"
-      aria-hidden
-      className={`absolute ${className ?? ""}`}
-    >
-      <title>Cross</title>
-      <path d="M5.5 0V11M0 5.5H11" stroke="currentColor" strokeWidth="1" />
-    </svg>
-  );
-}
-
-function GridCrosses({ className }: { className?: string }) {
-  return (
-    <div
-      aria-hidden
-      className={`pointer-events-none absolute inset-0 z-10 text-neutral-800 ${className ?? ""}`}
-    >
-      <Cross className="left-[-0.5px] top-[-0.5px] -translate-x-1/2 -translate-y-1/2" />
-      <Cross className="right-[-0.5px] top-[-0.5px] translate-x-1/2 -translate-y-1/2" />
-      <Cross className="left-[-0.5px] bottom-[-0.5px] -translate-x-1/2 translate-y-1/2" />
-      <Cross className="right-[-0.5px] bottom-[-0.5px] translate-x-1/2 translate-y-1/2" />
-    </div>
-  );
-}
-
-// Red pill label above a heading
-function SectionKicker({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="flex items-center gap-2 text-sm font-medium text-red-500">
-      <span aria-hidden className="size-2 rounded-[1px] bg-red-500" />
-      {children}
-    </p>
-  );
-}
-
-// Animated terminal typing
 const CODE_LINES = [
   {
     text: "from qulf.plugins.oauth import OAuthPlugin",
@@ -192,167 +152,6 @@ function TerminalCode() {
             Done — collecting sessions.
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-/*  Stats ticker  */
-const STATS = [
-  { value: "< 5 min", label: "to integrate" },
-  { value: "MIT", label: "license" },
-  { value: "100%", label: "typed" },
-  { value: "0", label: "vendor lock-in" },
-];
-
-function StatsTicker() {
-  return (
-    <div className="grid grid-cols-2 gap-px bg-neutral-800 sm:grid-cols-4">
-      {STATS.map((s) => (
-        <div key={s.label} className="bg-neutral-950 px-6 py-5 text-center">
-          <p className="text-2xl font-bold tracking-tight text-white">
-            {s.value}
-          </p>
-          <p className="mt-1 text-xs text-neutral-500 uppercase tracking-widest">
-            {s.label}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/*  Interactive Pip Install Showcase  */
-const INSTALL_PRESETS = [
-  {
-    id: "minimal",
-    label: "Core Engine",
-    command: "pip install qulf",
-    description:
-      "Core cryptography engine with JWT & DB sessions, password hashing, and user lifecycle management.",
-    tags: ["JWT", "Stateful DB", "Soft Delete"],
-  },
-  {
-    id: "fastapi",
-    label: "FastAPI + SQLAlchemy",
-    command: 'pip install "qulf[fastapi,sqlalchemy]"',
-    description:
-      "Native APIRouter mounting with async SQLAlchemy sessionmaker and LibCST AST schema auto-sync.",
-    tags: ["FastAPI", "SQLAlchemy", "Alembic"],
-  },
-  {
-    id: "flask",
-    label: "Flask + SQLModel",
-    command: 'pip install "qulf[flask,sqlmodel]"',
-    description:
-      "Flask Blueprint with context-aware g.qulf_user and SQLModel ORM auto-injected schema.",
-    tags: ["Flask", "SQLModel", "Blueprints"],
-  },
-  {
-    id: "django",
-    label: "Django + OAuth2",
-    command: 'pip install "qulf[django,oauth]"',
-    description:
-      "Native Django urlpatterns with Google, GitHub, Discord, Apple, and OIDC social logins.",
-    tags: ["Django", "OAuth2", "OIDC SSO"],
-  },
-  {
-    id: "passkey",
-    label: "Passkeys + TOTP",
-    command: 'pip install "qulf[passkey,totp]"',
-    description:
-      "FIDO2 WebAuthn passwordless auth (Touch ID, Face ID) and TOTP authenticator app support.",
-    tags: ["WebAuthn", "Passkeys", "TOTP 2FA"],
-  },
-  {
-    id: "all",
-    label: "Full Suite",
-    command: 'pip install "qulf[all]"',
-    description:
-      "Full batteries-included package with all 4 web frameworks, 4 ORMs, 6 plugins, and AST CLI tooling.",
-    tags: ["4 Frameworks", "4 ORMs", "6 Plugins"],
-  },
-];
-
-function PipInstallShowcase() {
-  const [activePreset, setActivePreset] = useState(INSTALL_PRESETS[1]);
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = (cmd: string) => {
-    navigator.clipboard.writeText(cmd);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="py-10 px-5 sm:px-8 lg:px-10 bg-neutral-950/60 border-b border-neutral-800">
-      {/* Preset tabs */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {INSTALL_PRESETS.map((preset) => {
-          const isActive = activePreset.id === preset.id;
-          return (
-            <button
-              type="button"
-              key={preset.id}
-              onClick={() => setActivePreset(preset)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
-                isActive
-                  ? "bg-red-600 text-white shadow-lg shadow-red-950/40"
-                  : "bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white"
-              }`}
-            >
-              {preset.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Terminal copy block */}
-      <div className="rounded-xl border border-neutral-800 bg-black/90 p-5 backdrop-blur-md relative overflow-hidden group">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 font-mono text-sm sm:text-base text-neutral-200 overflow-x-auto py-1">
-            <span className="text-red-500 font-bold select-none">$</span>
-            <span className="text-white font-medium">
-              {activePreset.command}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => handleCopy(activePreset.command)}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-900 text-xs font-semibold text-neutral-300 transition-all duration-200 hover:border-neutral-500 hover:text-white active:scale-95 cursor-pointer"
-            title="Copy command"
-          >
-            {copied ? (
-              <>
-                <Check className="size-3.5 text-green-400" />
-                <span className="text-green-400">Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="size-3.5 text-neutral-400" />
-                <span>Copy</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Preset Description & Tags */}
-        <div className="mt-4 pt-4 border-t border-neutral-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-neutral-400">
-          <p className="max-w-2xl leading-relaxed">
-            {activePreset.description}
-          </p>
-          <div className="flex flex-wrap gap-1.5 shrink-0">
-            {activePreset.tags.map((tag) => (
-              <span
-                key={tag}
-                className="px-2 py-0.5 rounded bg-neutral-800/80 text-neutral-300 font-mono text-[11px]"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -1033,90 +832,5 @@ export default function HomePage() {
       </main>
       <Footer />
     </>
-  );
-}
-
-function FeatureCard({
-  icon,
-  title,
-  desc,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="group flex flex-col gap-6 bg-neutral-950 p-8 transition-colors duration-200 hover:bg-neutral-900/50 lg:p-10">
-      <div>
-        <div className="mb-4 text-neutral-600 transition-colors duration-200 group-hover:text-red-500">
-          {icon}
-        </div>
-        <p className="text-base font-display font-semibold text-white">
-          {title}
-        </p>
-        <p className="mt-1.5 text-sm leading-6 text-neutral-400">{desc}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function MiniList({ items, mono }: { items: string[]; mono?: boolean }) {
-  return (
-    <div className="overflow-hidden rounded-lg border border-neutral-800 bg-black">
-      {items.map((item, i) => (
-        <div
-          key={item}
-          className="flex items-center justify-between px-4 py-2.5 text-xs"
-          style={{
-            borderBottom:
-              i < items.length - 1
-                ? "1px solid rgba(255,255,255,0.06)"
-                : undefined,
-            color: item.includes("soon") ? "#333" : "#777",
-            fontFamily: mono ? "monospace" : undefined,
-          }}
-        >
-          <span>{item}</span>
-          {!item.includes("soon") && (
-            <ChevronRight
-              className="size-3 shrink-0 text-neutral-700"
-              aria-hidden
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function FAQAccordion({ items }: { items: { q: string; a: string }[] }) {
-  const [open, setOpen] = useState<number | null>(null);
-  return (
-    <div className="border-t border-neutral-800">
-      {items.map((item, i) => (
-        <div key={item.q} className="border-b border-neutral-800">
-          <button
-            type="button"
-            onClick={() => setOpen(open === i ? null : i)}
-            className="flex w-full items-center justify-between gap-4 py-5 text-left text-base font-medium text-neutral-200 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 md:text-lg"
-            aria-expanded={open === i}
-          >
-            {item.q}
-            <ChevronRight
-              className={`size-4 shrink-0 text-neutral-600 transition-transform duration-300 ${open === i ? "rotate-90 text-red-500" : ""}`}
-              aria-hidden
-            />
-          </button>
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-out ${open === i ? "max-h-96 pb-5" : "max-h-0"}`}
-          >
-            <p className="text-sm leading-7 text-neutral-400">{item.a}</p>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
