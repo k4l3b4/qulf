@@ -1,12 +1,14 @@
 [tools]
 node = "24"
-"pipx:uv" = "latest"
+uv = "latest"
+ruff = "latest"
 pnpm = "latest"
 python = "3.10"
 
 [env]
 PYTHONPATH = "./src"
 TEST_ENV = "true"
+_.python.venv = { path = ".venv", create = true }
 _.file = ".env"
 
 [tasks.setup]
@@ -217,6 +219,7 @@ arg "<branch>"
 # Git helpers
 
 [settings]
+idiomatic_version_file_enable_tools = ["python"]
 python.uv_venv_auto = "create|source"
 
 [settings.npm]
