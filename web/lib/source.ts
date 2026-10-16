@@ -2,7 +2,7 @@ import { docs } from "collections/server";
 import { loader } from "fumadocs-core/source";
 import { icons as lucideIcons } from "lucide-react";
 import { createElement } from "react";
-import icons from "@/components/icons";
+import icons from "@/components/logo-icons";
 import { docsContentRoute, docsImageRoute, docsRoute } from "./shared";
 
 export const source = loader({

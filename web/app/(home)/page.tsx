@@ -29,7 +29,7 @@ import {
   MongoDBIcon,
   PrismaIcon,
   SQLAlchemyIcon,
-} from "@/components/icons";
+} from "@/components/logo-icons";
 import { QulfArchDiagram } from "@/components/QulfArchDiagram";
 import { config } from "@/lib/shared";
 
@@ -340,7 +340,7 @@ export default function HomePage() {
                       <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-500 opacity-60" />
                       <span className="relative inline-flex size-1.5 rounded-full bg-red-500" />
                     </span>
-                    Open Source · Python Auth
+                    Everything Python Auth
                   </div>
                   <h1 className="font-display-heading">
                     The Modern
@@ -786,7 +786,7 @@ export default function HomePage() {
             className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-150 h-100 rounded-full"
           />
           <div className="relative mx-auto grid max-w-7xl border-x border-white/10 lg:grid-cols-12">
-            <GridCrosses className="text-white/20" />
+            {/* <GridCrosses className="text-white/20" /> */}
 
             <div className="relative z-10 border-b border-white/10 px-5 py-16 sm:px-8 md:py-24 lg:col-span-8 lg:border-b-0 lg:border-r lg:px-10">
               <h2 className="max-w-3xl text-4xl font-display font-bold leading-[1.02] tracking-[-0.035em] text-white md:text-6xl text-balance">
