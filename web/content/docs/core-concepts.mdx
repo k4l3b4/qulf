@@ -6,9 +6,9 @@ icon: Cpu
 
 # Core Concepts
 
-At the heart of Qulf lies a philosophy of decoupled, heavily-typed components. Instead of tightly integrating with a specific web framework (like Django) or ORM (like SQLAlchemy), Qulf splits authentication into three distinct layers.
+At the heart of Qulf lies a philosophy of decoupled, heavily-typed components. Instead of tightly integrating with a specific web framework (like Django) or an ORM (like SQLAlchemy), Qulf splits authentication into three distinct layers.
 
-## 1. The Qulf Orchestrator (`core.py`)
+## 1. The Core (`core.py`)
 The `Qulf` class is the central nervous system. It orchestrates user sign-ups, session creation, password verification, and executes plugin lifecycle hooks.
 
 ```python title="app/auth.py"
@@ -32,7 +32,33 @@ Qulf never runs SQL queries directly. Instead, it delegates all storage operatio
 The adapter is responsible for methods like `create_user`, `get_user_by_email`, and `create_session`.
 
 ## 3. The Framework Adapter (`frameworks/`)
-Just as Qulf doesn't know about databases, it doesn't know about HTTP requests directly. The framework adapter (e.g., `serve_qulf(auth)` for FastAPI) acts as a translator. It converts incoming native HTTP requests into normalized `QulfRequest` objects, and translates `QulfResponse` objects back into native HTTP responses (including setting secure cookies).
+
+Just as Qulf doesn't know about databases, it doesn't know about HTTP requests directly. The framework adapter (e.g., `serve_qulf(auth)` for FastAPI) acts as a translator. It converts incoming native HTTP requests into normalized `QulfRequest` objects, and translates `QulfResponse` objects back into native HTTP responses (including setting secure cookies). 👇🏽👇🏽
+
+```python
+class QulfRequest(BaseModel):
+    """
+    **An agnostic HTTP request.**
+    """
+
+    body: dict[str, Any] = {}
+    query_params: dict[str, str] = {}
+    path_params: dict[str, str] = {}
+    cookies: dict[str, str] = {}
+    ip_address: str | None = None
+    user_agent: str | None = None
+
+class QulfResponse(BaseModel):
+    """
+    **An agnostic HTTP response.**
+    """
+
+    status_code: int = 200
+    body: dict[str, Any] | None = None
+    headers: dict[str, str] = {}
+    set_cookies: list[CookieOptions] = []
+    delete_cookies: list[str] = []
+```
 
 ## Data Models (Types)
 Everything in Qulf is strictly typed using Pydantic V2 schemas (found in `types.py`).

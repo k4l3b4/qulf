@@ -4,7 +4,7 @@ description: Automated scaffolding, AST model column injection, and migration or
 icon: Terminal
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Tabs } from 'fumadocs-ui/components/tabs'
 
 # Qulf CLI (`qulf`)
 
@@ -41,98 +41,100 @@ app = "src.main:auth"
 models = "src/db/models.py"
 ```
 
-2. **Model Ejection**: Generates pre-configured User and Session models tailored for your chosen ORM:
+1. **Model Ejection**: Generates pre-configured User and Session models tailored for your chosen ORM:
 
 <Tabs items={['SQLAlchemy', 'SQLModel', 'Django']}>
   <Tab value="SQLAlchemy">
-```python title="src/db/models.py"
-from datetime import datetime, timezone
-from sqlalchemy import DateTime, String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+    ```python title="src/db/models.py"
+    from datetime import datetime, timezone
+    from sqlalchemy import DateTime, String
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-class Base(DeclarativeBase):
-    pass
+    class Base(DeclarativeBase):
+        pass
 
-class QulfUserModel(Base):
-    __tablename__ = "users"
+    class QulfUserModel(Base):
+        __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    email: Mapped[str] = mapped_column(String, unique=True, index=True)
-    hashed_password: Mapped[str] = mapped_column(String)
-    name: Mapped[str | None] = mapped_column(String, nullable=True)
-    username: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+        id: Mapped[str] = mapped_column(String, primary_key=True)
+        email: Mapped[str] = mapped_column(String, unique=True, index=True)
+        hashed_password: Mapped[str] = mapped_column(String)
+        name: Mapped[str | None] = mapped_column(String, nullable=True)
+        username: Mapped[str | None] = mapped_column(String, nullable=True)
+        created_at: Mapped[datetime] = mapped_column(
+            DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        )
 
-class QulfSessionModel(Base):
-    __tablename__ = "sessions"
+    class QulfSessionModel(Base):
+        __tablename__ = "sessions"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    user_id: Mapped[str] = mapped_column(String, index=True)
-    token: Mapped[str] = mapped_column(String, unique=True, index=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
-```
+        id: Mapped[str] = mapped_column(String, primary_key=True)
+        user_id: Mapped[str] = mapped_column(String, index=True)
+        token: Mapped[str] = mapped_column(String, unique=True, index=True)
+        expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+        created_at: Mapped[datetime] = mapped_column(
+            DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        )
+    ```
   </Tab>
+
   <Tab value="SQLModel">
-```python title="src/db/models.py"
-from datetime import datetime, timezone
-from sqlmodel import Field, SQLModel
+    ```python title="src/db/models.py"
+    from datetime import datetime, timezone
+    from sqlmodel import Field, SQLModel
 
-class QulfUserModel(SQLModel, table=True):
-    __tablename__ = "users"
+    class QulfUserModel(SQLModel, table=True):
+        __tablename__ = "users"
 
-    id: str = Field(primary_key=True)
-    email: str = Field(unique=True, index=True)
-    hashed_password: str
-    name: str | None = Field(default=None)
-    username: str | None = Field(default=None)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+        id: str = Field(primary_key=True)
+        email: str = Field(unique=True, index=True)
+        hashed_password: str
+        name: str | None = Field(default=None)
+        username: str | None = Field(default=None)
+        created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class QulfSessionModel(SQLModel, table=True):
-    __tablename__ = "sessions"
+    class QulfSessionModel(SQLModel, table=True):
+        __tablename__ = "sessions"
 
-    id: str = Field(primary_key=True)
-    user_id: str = Field(index=True)
-    token: str = Field(unique=True, index=True)
-    expires_at: datetime
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-```
+        id: str = Field(primary_key=True)
+        user_id: str = Field(index=True)
+        token: str = Field(unique=True, index=True)
+        expires_at: datetime
+        created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    ```
   </Tab>
+
   <Tab value="Django">
-```python title="your_app/models.py"
-from django.db import models
+    ```python title="your_app/models.py"
+    from django.db import models
 
-class QulfUserModel(models.Model):
-    id = models.CharField(max_length=255, primary_key=True)
-    email = models.EmailField(unique=True, db_index=True)
-    hashed_password = models.CharField(max_length=255)
-    name = models.CharField(max_length=255, null=True, blank=True)
-    username = models.CharField(max_length=255, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    class QulfUserModel(models.Model):
+        id = models.CharField(max_length=255, primary_key=True)
+        email = models.EmailField(unique=True, db_index=True)
+        hashed_password = models.CharField(max_length=255)
+        name = models.CharField(max_length=255, null=True, blank=True)
+        username = models.CharField(max_length=255, null=True, blank=True)
+        created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        db_table = "users"
+        class Meta:
+            db_table = "users"
 
-class QulfSessionModel(models.Model):
-    id = models.CharField(max_length=255, primary_key=True)
-    user_id = models.CharField(max_length=255, db_index=True)
-    token = models.CharField(max_length=512, unique=True, db_index=True)
-    expires_at = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    class QulfSessionModel(models.Model):
+        id = models.CharField(max_length=255, primary_key=True)
+        user_id = models.CharField(max_length=255, db_index=True)
+        token = models.CharField(max_length=512, unique=True, db_index=True)
+        expires_at = models.DateTimeField()
+        created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        db_table = "sessions"
-```
+        class Meta:
+            db_table = "sessions"
+    ```
   </Tab>
 </Tabs>
 
 ---
 
-## 2. AST Plugin Schema Synchronization (`qulf sync`)
+## 2. Plugin Schema Synchronization (`qulf sync`)
 
 When you add plugins to your `Qulf` engine (such as `OAuthPlugin`, `TOTPPlugin`, or `MagicLinkPlugin`), those plugins require additional database columns or tables.
 
@@ -160,7 +162,7 @@ class QulfUserModel(Base):
     email:Mapped[str] = mapped_column(String, unique=True, index=True)
     # ... base fields ...
 
-    # Injected by TOTPPlugin
+    # Injected by totp: 2026-09-23
     totp_secret: Mapped[str | None] = mapped_column(String, nullable=True)
     totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
 ```
@@ -194,7 +196,7 @@ qulf migrate
   # If --apply is set:
   python manage.py migrate
   ```
-* **Motor (MongoDB)**: Motor is schemaless — `qulf migrate` prints a confirmation notice and exits cleanly (`code 0`).
+* **Motor (MongoDB)**: Motor is schemaless — `qulf migrate` prints a confirmation notice and exits.
 
 ---
 

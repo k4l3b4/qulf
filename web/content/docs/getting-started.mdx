@@ -1,49 +1,44 @@
 ---
 title: Quickstart Guide
-description: Step-by-step guide to adding complete authentication to your Python application.
+description: This guide covers setting up Qulf with your choice of web framework, database ORM, and the Qulf CLI tool.
 icon: Rocket
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-# Quickstart Guide
-
-This guide covers setting up Qulf with your choice of **web framework**, **database ORM**, and the **Qulf CLI tool**.
-
----
 
 ## 1. Installation
 
-Install Qulf with CLI support (`qulf[cli]`):
+Install Qulf (`qulf`):
 
 <Tabs items={['uv', 'pip', 'poetry', 'pdm']}>
   <Tab value="uv">
     ```bash
-    uv add "qulf[cli]"
+    uv add qulf
     ```
   </Tab>
   <Tab value="pip">
     ```bash
-    pip install "qulf[cli]"
+    pip install qulf
     ```
   </Tab>
   <Tab value="poetry">
     ```bash
-    poetry add "qulf[cli]"
+    poetry add qulf
     ```
   </Tab>
   <Tab value="pdm">
     ```bash
-    pdm add "qulf[cli]"
+    pdm add qulf
     ```
   </Tab>
 </Tabs>
 
 > **Optional Extras:**
-> - `"qulf[cli]"` — AST schema sync & migration tool (`qulf init`, `qulf sync`, `qulf migrate`)
-> - `"qulf[passkey]"` — WebAuthn / Passkey biometric login (`webauthn`)
 > - Framework extras: `"qulf[fastapi]"`, `"qulf[litestar]"`, `"qulf[flask]"`, `"qulf[django]"`
-> - Database extras: `"qulf[sqlmodel]"`, `"qulf[motor]"`
+> - Database extras: `"qulf[sqlalchemy]"`, `"qulf[sqlmodel]"`, `"qulf[django]"`, `"qulf[motor]"`
+> - Ratelimiting extras: `"qulf[redis]"`
+> - `"qulf[passkey]"` — WebAuthn / Passkey biometric login (`webauthn`)
 
 
 ---
@@ -114,12 +109,14 @@ import motor.motor_asyncio
 from qulf.adapters.motor import MotorAdapter
 from qulf.core import Qulf, QulfConfig
 
-client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
-db = client["my_database"]
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
 
-db_adapter = MotorAdapter(db)
+client = AsyncIOMotorClient(MONGODB_URL)
+adapter = MotorAdapter(client[MONGO_DB_NAME])
+
 auth = Qulf(
-    db=db_adapter,
+    db=adapter,
     config=QulfConfig(secret_key="a-very-long-secret-key-at-least-32-chars!"),
 )
 ```
@@ -182,8 +179,8 @@ from django.http import JsonResponse
 from app.auth import auth
 
 @requires_role(auth, "admin")
-async def admin_dashboard(request):
-    user = request.qulf_user
+async def admin_panel(request):
+    user = await get_current_user(auth)(request)
     return JsonResponse({"message": f"Hello Admin {user.name}"})
 
 urlpatterns = [
@@ -224,6 +221,9 @@ Whenever you add plugins (e.g. `OAuthPlugin`, `TOTPPlugin`, `PasskeyPlugin`), ru
 # 1. Inject plugin columns into models.py via AST
 qulf sync
 
-# 2. Autogenerate & apply database migrations
+# 2. generate migrations
+qulf migrate
+
+# 2. generate & apply database migrations
 qulf migrate --apply
 ```

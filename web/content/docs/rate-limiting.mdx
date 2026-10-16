@@ -28,7 +28,6 @@ limiter = InMemoryFixedWindow(
         window_seconds=60
     )
 )
-
 auth = Qulf(
     db=db_adapter,
     config=QulfConfig(project_name="My Secure App"),
