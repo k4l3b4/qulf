@@ -125,7 +125,7 @@ class TestLitestarAuthEndpoints:
         res = client.post("/sign-in", json=VALID_SIGN_IN_PAYLOAD)
         assert res.status_code == 400
 
-    def test_lightstar_sign_in_requires_2fa(self, client, auth_mock) -> None:
+    def test_litestar_sign_in_requires_2fa(self, client, auth_mock) -> None:
         temp_token = "temporary-2fa-token"
         auth_mock.sign_in.side_effect = Requires2FAError(temp_token)
 
