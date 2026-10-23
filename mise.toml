@@ -3,15 +3,21 @@ node = "24"
 uv = "latest"
 ruff = "latest"
 pnpm = "latest"
-python = "3.10"
+python = "3.12"
+pre-commit = "latest"
 
 [env]
 PYTHONPATH = "./src"
 TEST_ENV = "true"
-_.python.venv = { path = ".venv", create = true }
 _.file = ".env"
 
+
+[tasks.install-hooks]
+description = "Install git hooks"
+run = "pre-commit install"
+
 [tasks.setup]
+depends = ["install-hooks"]
 description = "Set up the virtual environment and install dependencies"
 run = """
 uv venv --allow-existing
