@@ -10,7 +10,6 @@ dependencies = [
   "rich>=15.0.0",
   "tomlkit>=0.15.1",
   "typer>=0.27.1",
-  "pre-commit>=4.6.2",
 ]
 description = "A framework and ORM agnostic, plugin-driven authentication library for Python."
 license = "MIT"

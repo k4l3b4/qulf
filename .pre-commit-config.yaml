@@ -18,7 +18,6 @@ repos:
         name: Ensure uv.lock is up to date
         entry: >
           bash -c '
-            export PATH="$HOME/.local/share/mise/installs/uv/latest/.mise-bins:$PATH"
             uv lock &&
             if ! git diff --quiet uv.lock; then
               echo "";
@@ -37,9 +36,9 @@ repos:
         entry: uv run mypy
         language: system
         types: [python]
-
+        
       - id: pytest
-        name: pytest
+        name: Run tests with pytest
         entry: uv run pytest tests/ -q
         language: system
         pass_filenames: false
