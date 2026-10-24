@@ -11,13 +11,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/components/mdx";
 import { config } from "@/lib/shared";
-import { getPageImage, getPageMarkdownUrl, source } from "@/lib/source";
+import { getPageImageUrl, getPageMarkdownUrl, source } from "@/lib/source";
 
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();
-
+  
   const MDX = page.data.body;
   const markdownUrl = getPageMarkdownUrl(page).url;
 
@@ -61,7 +61,7 @@ export async function generateMetadata(
     title: `${page.data.title ?? "Introduction"} - Qulf`,
     description: page.data.description,
     openGraph: {
-      images: getPageImage(page).url,
+      images: getPageImageUrl(page).url,
     },
   };
 }
