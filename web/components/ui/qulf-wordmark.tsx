@@ -1,4 +1,4 @@
-import { QulfLogoIcon } from "@/components/icons";
+import { QulfLogoIcon } from "@/components/logo-icons";
 
 interface QulfWordMarkProps {
   iconSize?: number;

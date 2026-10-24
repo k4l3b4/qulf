@@ -36,9 +36,9 @@ repos:
         entry: uv run mypy
         language: system
         types: [python]
-
+        
       - id: pytest
-        name: pytest
+        name: Run tests with pytest
         entry: uv run pytest tests/ -q
         language: system
         pass_filenames: false

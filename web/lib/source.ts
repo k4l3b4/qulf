@@ -2,8 +2,8 @@ import { docs } from "collections/server";
 import { loader } from "fumadocs-core/source";
 import { icons as lucideIcons } from "lucide-react";
 import { createElement } from "react";
-import icons from "@/components/icons";
-import { docsContentRoute, docsImageRoute, docsRoute } from "./shared";
+import icons from "@/components/logo-icons";
+import { docsContentRoute, docsRoute } from "./shared";
 
 export const source = loader({
   baseUrl: docsRoute,
@@ -21,12 +21,12 @@ export const source = loader({
     }
   },
 });
-export function getPageImage(page: (typeof source)["$inferPage"]) {
-  const segments = [...page.slugs, "image.png"];
+export function getPageImageUrl(page: (typeof source)['$inferPage']) {
+  const segments = [...page.slugs, 'image.png'];
 
   return {
     segments,
-    url: `${docsImageRoute}/${segments.join("/")}`,
+    url: '/' + [page.locale, 'og', 'docs', ...segments].filter(Boolean).join('/'),
   };
 }
 

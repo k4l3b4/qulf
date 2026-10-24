@@ -12,7 +12,7 @@ Qulf is designed with the philosophy that authentication should be secure out-of
 
 Qulf uses **Argon2** (specifically `argon2-cffi`) as the exclusive password hashing algorithm.
 
-Argon2 was the winner of the Password Hashing Competition (PHC) and provides superior resistance against both GPU cracking and side-channel attacks compared to legacy algorithms like bcrypt or PBKDF2.
+Argon2 was the winner of the [Password Hashing Competition (PHC)](https://www.password-hashing.net/) and provides superior resistance against both GPU cracking and side-channel attacks compared to legacy algorithms like bcrypt or PBKDF2.
 
 When a user signs up, Qulf automatically:
 1. Generates a secure random salt.
@@ -29,17 +29,18 @@ from qulf.core import QulfConfig
 config = QulfConfig(
     cookies={
         "name": "qulf_session",
-        "secure": True,           # Enforce HTTPS!
+        "secure": True,           # Enforce HTTPS
         "http_only": True,        # Prevent JavaScript access to the cookie
         "same_site": "lax"        # Protect against CSRF
     }
 )
 ```
 
-### Understanding `same_site`
-By defaulting to `same_site="lax"`, Qulf prevents the browser from sending the session cookie along with cross-site POST requests. This effectively eliminates most CSRF attack vectors without requiring complex anti-CSRF token exchanges.
+### `same_site` In Qulf
 
-If your frontend and backend live on entirely different domains (e.g., `app.frontend.com` and `api.backend.com`), you may need to set `same_site="none"` and `secure=True`.
+Qulf defaults to `same_site="lax"` , this prevents the browser from sending the session cookie along with cross-site POST requests.
+
+If your frontend and backend live on sub-domains or different domains (e.g., `app.frontend.com` and `api.backend.com`), you may need to set `same_site="none"` and `secure=True`.
 
 ## Constant Time Verification
 

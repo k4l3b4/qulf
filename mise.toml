@@ -1,15 +1,23 @@
 [tools]
 node = "24"
-"pipx:uv" = "latest"
+uv = "latest"
+ruff = "latest"
 pnpm = "latest"
-python = "3.10"
+python = "3.12"
+pre-commit = "latest"
 
 [env]
 PYTHONPATH = "./src"
 TEST_ENV = "true"
 _.file = ".env"
 
+
+[tasks.install-hooks]
+description = "Install git hooks"
+run = "pre-commit install"
+
 [tasks.setup]
+depends = ["install-hooks"]
 description = "Set up the virtual environment and install dependencies"
 run = """
 uv venv --allow-existing
@@ -217,6 +225,7 @@ arg "<branch>"
 # Git helpers
 
 [settings]
+idiomatic_version_file_enable_tools = ["python"]
 python.uv_venv_auto = "create|source"
 
 [settings.npm]
